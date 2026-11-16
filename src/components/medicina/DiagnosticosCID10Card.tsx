@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,6 +99,7 @@ export default function DiagnosticosCID10Card({ pacienteId }: Props) {
     onSuccess: () => {
       toast.success('Diagnóstico adicionado');
       qc.invalidateQueries({ queryKey: ['diagnosticos', pacienteId] });
+      invalidarFontesClinicas(qc, pacienteId);
       setSelecionado(null);
       setObservacao('');
       setTipo('principal');
@@ -114,7 +116,10 @@ export default function DiagnosticosCID10Card({ pacienteId }: Props) {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['diagnosticos', pacienteId] }),
+    onSuccess: () => {
+      invalidarFontesClinicas(qc, pacienteId);
+      return qc.invalidateQueries({ queryKey: ['diagnosticos', pacienteId] });
+    },
   });
 
   return (

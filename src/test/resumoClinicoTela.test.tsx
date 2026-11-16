@@ -124,6 +124,9 @@ function montarAvaliacaoAtual() {
   );
 }
 
+// O cartão "Como começou" também tem um título de nível 4: os anos são só os títulos dentro da lista de marcos.
+const anosDosMarcos = (raiz: HTMLElement) => within(raiz.querySelector('#linha-do-tempo-marcos') as HTMLElement).getAllByRole('heading', { level: 4 }).map((x) => x.textContent);
+
 const titulosDosMarcos = (raiz: HTMLElement) => Array.from(raiz.querySelectorAll('li[data-natureza] p:first-of-type')).map((p) => p.textContent?.replace(/^(Registro no app|Fato clínico): /, ''));
 
 beforeEach(() => { h.invocar.mockReset(); preparar(cenarioCompleto()); });
@@ -136,11 +139,12 @@ describe('Linha do tempo clínica', () => {
     const r = await regiao();
     await waitFor(() => expect(within(r).getByText('MyID concluído')).toBeInTheDocument());
     expect(titulosDosMarcos(r)).toEqual(['Último envio do histórico clínico (pelo cliente)', 'MyID concluído', 'Bioimpedância', 'Tug', 'PHQ-9 (Depressão)', '[M54.5] Dor lombar baixa']);
-    expect(within(r).getAllByRole('heading', { level: 4 }).map((x) => x.textContent)).toEqual(['2026', '2024']);
+    expect(anosDosMarcos(r)).toEqual(['2026', '2024']);
 
     fireEvent.click(within(r).getByRole('button', { name: 'Ver todos (9)' }));
-    expect(within(r).getAllByRole('heading', { level: 4 }).map((x) => x.textContent)).toEqual(['2026', '2024', '2022', '2019', '2018']);
-    expect(titulosDosMarcos(r).slice(6)).toEqual(['Ligamento do joelho', 'Fratura de punho', 'Cirurgia de menisco']);
+    expect(anosDosMarcos(r)).toEqual(['2026', '2024', '2022', '2019', '2018']);
+    // A cirurgia do cliente ganha o rótulo, porque o texto dele ("Ligamento do joelho") sozinho não diz do que se trata.
+    expect(titulosDosMarcos(r).slice(6)).toEqual(['Cirurgia ou internação: Ligamento do joelho', 'Fratura de punho', 'Cirurgia de menisco']);
 
     fireEvent.click(within(r).getByRole('button', { name: 'Ver menos' }));
     expect(titulosDosMarcos(r)).toHaveLength(6);
@@ -194,18 +198,23 @@ describe('Linha do tempo clínica', () => {
 
     const cirurgiaDoCliente = por('Ligamento do joelho');
     expect(cirurgiaDoCliente.dataset.precisao).toBe('ano');
-    expect(cirurgiaDoCliente.textContent).toContain('2022 · Cirurgia ou internação');
+    // O título já abre com "Cirurgia ou internação": a linha da data não repete o rótulo.
+    expect(cirurgiaDoCliente.querySelector('p')?.textContent).toContain('Cirurgia ou internação: Ligamento do joelho');
+    expect(cirurgiaDoCliente.querySelectorAll('p')[1].textContent).toBe('2022');
     expect(cirurgiaDoCliente.textContent).not.toMatch(/\d{2}\/\d{2}\/2022/);
     expect(cirurgiaDoCliente.querySelector('[data-origem="cliente"]')?.textContent).toBe('Relatado pelo cliente, não revisado');
 
     const fratura = por('Fratura de punho');
     expect(fratura.dataset.precisao).toBe('dia');
-    expect(fratura.textContent).toContain('04/03/2019 · Fratura');
+    // "Fratura de punho" já abre com o tipo ("Fratura"): a linha da data não repete.
+    expect(fratura.querySelectorAll('p')[1].textContent).toBe('04/03/2019');
     expect(fratura.textContent).toContain('Queda de bicicleta');
     expect(fratura.querySelector('[data-origem="profissional"]')?.textContent).toBe('Registrado pelo profissional');
 
     expect(por('MyID concluído').querySelector('[data-origem="cliente"]')).not.toBeNull();
     expect(por('Bioimpedância').querySelector('[data-origem="profissional"]')).not.toBeNull();
+    // O título "Bioimpedância" não abre com o tipo: a linha da data o mostra.
+    expect(por('Bioimpedância').querySelectorAll('p')[1].textContent).toBe('01/08/2026 · Exame presencial · registro no app');
   });
 
   it('a faixa "Sem data" vem recolhida; ao abrir mostra o texto exatamente como o cliente escreveu, cada item com o próprio selo', async () => {
@@ -223,9 +232,10 @@ describe('Linha do tempo clínica', () => {
     expect(lista).toBeVisible();
     expect(lista.textContent).toContain('Apêndice');
     expect(lista.textContent).toContain('Ano que o cliente escreveu: "há 2 anos"');
-    expect(lista.textContent).toContain('Há 3 semanas, depois da mudança');
-    expect(lista.textContent).toContain('Mais de 1 ano');
-    expect(lista.textContent).toContain('faz 5 anos');
+    // As respostas sobre o começo do quadro saíram de "Sem data" (dado em `comoComecou`; o cartão é da tela nova).
+    expect(lista.textContent).not.toContain('Há 3 semanas, depois da mudança');
+    expect(lista.textContent).not.toContain('Mais de 1 ano');
+    expect(lista.textContent).not.toContain('faz 5 anos');
     expect(lista.querySelectorAll('[data-origem="cliente"]')).toHaveLength(lista.querySelectorAll('li').length);
     expect(r.querySelector('#linha-do-tempo-sem-data')?.closest('section')).toBe(r);
     // O texto digitado nunca virou marco com data.
@@ -374,9 +384,11 @@ describe('Linha do tempo clínica', () => {
     h.falso.tabelas.historia_vida_paciente.push({ id: 'h3', paciente_id: 'pac-1', data_evento: '0001-01-01', tipo: 'outro', titulo: 'Data absurda' });
     montarLinha();
     const r = await regiao();
-    await within(r).findByText('1 registro ficou de fora porque a data não é válida.');
+    await within(r).findByText('1 registro ficou de fora: data ausente, inválida ou no futuro.');
     fireEvent.click(within(r).getByRole('button', { name: /Ver todos/ }));
-    expect(r.textContent).not.toContain('Data absurda');
+    // Não virou marco. Só aparece na lista dos que ficaram de fora, que vem recolhida.
+    expect(titulosDosMarcos(r).join('|')).not.toContain('Data absurda');
+    expect(within(r).getByText('Data absurda')).not.toBeVisible();
   });
 
   it('nenhum marco ganha a data de hoje: sem MyID/diagnóstico datados, nada aparece com o dia de hoje', async () => {
@@ -674,14 +686,14 @@ describe('Linha do tempo clínica: texto longo aparece inteiro e quebra linha', 
 
   it('texto de 6 linhas do cliente na faixa "Sem data" também aparece inteiro, como foi escrito', async () => {
     preparar({
-      pacientes: [{ id: 'pac-1', historico_clinico: null, historia_atual: { inicio: seisLinhas.join('\n') } }],
+      pacientes: [{ id: 'pac-1', historico_clinico: { cirurgias: { items: [{ tipo: 'Coluna', ano: 'faz tempo', complicacoes: seisLinhas.join('\n') }] } }, historia_atual: null }],
     });
     montarLinha();
     const r = await regiao();
     fireEvent.click(await within(r).findByRole('button', { name: /^Sem data/ }));
     const lista = r.querySelector('#linha-do-tempo-sem-data') as HTMLElement;
     const detalhe = Array.from(lista.querySelectorAll('p')).find((p) => p.textContent?.includes('Linha 1 do relato')) as HTMLElement;
-    expect(detalhe.textContent).toBe(seisLinhas.join('\n'));
+    expect(detalhe.textContent).toContain(seisLinhas.join('\n'));
     expect(detalhe.className).not.toMatch(SEM_CORTE);
     expect(detalhe.className).toContain('whitespace-pre-wrap');
   });
@@ -701,12 +713,12 @@ describe('Linha do tempo clínica: texto longo aparece inteiro e quebra linha', 
     const outro = 'B'.repeat(200);
     preparar({
       historia_vida_paciente: [{ id: 'h1', paciente_id: 'pac-1', data_evento: '2020-01-01', tipo: 'outro', titulo: comprido, descricao: outro }],
-      pacientes: [{ id: 'pac-1', historico_clinico: { cirurgias: { items: [{ tipo: 'C'.repeat(200), ano: 'D'.repeat(200) }] } }, historia_atual: { inicio: 'E'.repeat(200) } }],
+      pacientes: [{ id: 'pac-1', historico_clinico: { cirurgias: { items: [{ tipo: 'C'.repeat(200), ano: 'D'.repeat(200) }] } }, historia_atual: null }],
     });
     montarLinha();
     const r = await regiao();
     fireEvent.click(await within(r).findByRole('button', { name: /^Sem data/ }));
-    for (const letra of ['A', 'B', 'C', 'D', 'E']) {
+    for (const letra of ['A', 'B', 'C', 'D']) {
       const p = Array.from(r.querySelectorAll('li p')).find((x) => x.textContent?.includes(letra.repeat(200))) as HTMLElement;
       expect(p, letra).toBeTruthy();
       expect(p.className, letra).toContain('break-words');
@@ -908,7 +920,9 @@ describe('Linha do tempo clínica: o mesmo fato relatado pelo cliente e registra
     });
     montarLinha();
     const r = await regiao();
-    await waitFor(() => expect(within(r).getAllByText('Ligamento do joelho (LCA)')).toHaveLength(2));
+    await waitFor(() => expect(within(r).getAllByText(/Ligamento do joelho \(LCA\)/)).toHaveLength(2));
+    expect(within(r).getByText('Cirurgia ou internação: Ligamento do joelho (LCA)')).toBeInTheDocument(); // o do cliente leva o rótulo
+    expect(within(r).getByText('Ligamento do joelho (LCA)')).toBeInTheDocument(); // o do profissional fica como ele escreveu
     const itens = Array.from(r.querySelectorAll('li[data-natureza]')) as HTMLElement[];
     expect(itens.map((li) => li.querySelector('[data-origem]')?.getAttribute('data-origem')).sort()).toEqual(['cliente', 'profissional']);
     expect(itens.map((li) => li.dataset.precisao).sort()).toEqual(['ano', 'dia']);

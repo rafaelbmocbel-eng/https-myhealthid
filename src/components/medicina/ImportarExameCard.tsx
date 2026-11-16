@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ export default function ImportarExameCard({ pacienteId }: Props) {
       toast.success(d?.vitais_importados ? 'Exame importado + sinais vitais atualizados' : 'Exame importado');
       qc.invalidateQueries({ queryKey: ['exames-importados', pacienteId] });
       qc.invalidateQueries({ queryKey: ['sinais-vitais', pacienteId] });
+      invalidarFontesClinicas(qc, pacienteId);
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao importar'),
   });
@@ -58,6 +60,7 @@ export default function ImportarExameCard({ pacienteId }: Props) {
     if (!confirm('Apagar este exame?')) return;
     await (supabase as any).from('exames_importados').delete().eq('id', id);
     qc.invalidateQueries({ queryKey: ['exames-importados', pacienteId] });
+    invalidarFontesClinicas(qc, pacienteId);
   };
 
   return (

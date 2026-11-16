@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format } from '@/lib/dateSafe';
@@ -401,6 +402,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
       qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      invalidarFontesClinicas(qc, paciente.id);
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {

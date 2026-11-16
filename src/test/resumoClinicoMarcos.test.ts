@@ -23,7 +23,7 @@ describe('cirurgias do histórico clínico (ano que o cliente digitou)', () => {
     expect(semData).toEqual([]);
     expect(marcos).toHaveLength(1);
     expect(marcos[0]).toMatchObject({
-      id: 'historico_clinico:cirurgia:0', data: { iso: '2022', precisao: 'ano' }, titulo: 'Ligamento do joelho (LCA)',
+      id: 'historico_clinico:cirurgia:id:x', data: { iso: '2022', precisao: 'ano' }, titulo: 'Ligamento do joelho (LCA)',
       detalhe: 'Complicações: dor ao agachar', tipo: 'cirurgia', fonte: 'historico_clinico', origem: 'cliente', revisado: false, natureza: 'fato',
     });
   });
@@ -76,11 +76,13 @@ describe('cirurgias do histórico clínico (ano que o cliente digitou)', () => {
 });
 
 describe('texto livre do cliente nunca vira data', () => {
-  it('história atual: "há 3 semanas" fica em "Sem data", como o cliente escreveu, e não gera marco com a data da atualização', () => {
-    const { marcos, semData } = montar(comHistorico(null, { queixa: 'dor lombar', inicio: 'Há 3 semanas, depois da mudança', fatores: '', impacto: '' }));
-    expect(semData).toEqual([expect.objectContaining({
-      id: 'historia_atual:inicio', detalhe: 'Há 3 semanas, depois da mudança', fonte: 'historia_atual', origem: 'cliente', revisado: false,
-    })]);
+  it('história atual: "há 3 semanas" vai para o cartão "Como começou" (não para "Sem data"), como o cliente escreveu, e não gera marco com a data da atualização', () => {
+    const { marcos, semData, comoComecou } = montar(comHistorico(null, { queixa: 'dor lombar', inicio: 'Há 3 semanas, depois da mudança', fatores: '', impacto: '' }));
+    expect(semData).toEqual([]);
+    expect(comoComecou?.inicio).toEqual([{
+      id: 'historia_atual:inicio', rotulo: 'Há quanto tempo começou (história atual)', texto: 'Há 3 semanas, depois da mudança',
+      fonte: 'historia_atual', origem: 'cliente', revisado: false,
+    }]);
     expect(marcos).toEqual([]);
   });
 
@@ -92,32 +94,37 @@ describe('texto livre do cliente nunca vira data', () => {
     }
   });
 
-  it('MyID: faixa com o rótulo humano, texto escrito e "o que fazia" vão para "Sem data"; nenhum vira marco', () => {
+  it('MyID: faixa com o rótulo humano, texto escrito e "o que fazia" vão para o cartão "Como começou" (fora de "Sem data"); nenhum vira marco', () => {
     const respostas = { bloco_1_queixa: 'Dor no joelho', bloco_1_duracao: 'gt1y', bloco_1_quando_data: 'Há 5 anos', bloco_1_quando_desc: 'Corrida no sábado' };
-    const { marcos, semData } = montar({ myidConcluidos: [myid()], myidUltimo: myid({ respostas_brutas: respostas }) });
+    const { marcos, semData, comoComecou } = montar({ myidConcluidos: [myid()], myidUltimo: myid({ respostas_brutas: respostas }) });
     expect(marcos.map((m) => m.id)).toEqual(['myid:m1']); // só o registro "MyID concluído", com a data da sessão
-    expect(semData.map((s) => [s.titulo, s.detalhe])).toEqual([
+    expect(semData).toEqual([]);
+    expect(comoComecou?.inicio.map((s) => [s.rotulo, s.texto])).toEqual([
       ['Quando começou (faixa escolhida no MyID)', 'Mais de 1 ano'],
       ['Quando começou (texto escrito no MyID)', 'Há 5 anos'],
       ['O que estava fazendo quando notou (MyID)', 'Corrida no sábado'],
     ]);
-    expect(semData.every((s) => s.origem === 'cliente' && s.revisado === false && s.fonte === 'myid')).toBe(true);
+    expect(comoComecou?.queixas.map((s) => [s.rotulo, s.texto])).toEqual([['Queixa principal (MyID)', 'Dor no joelho']]);
+    expect([...(comoComecou?.queixas ?? []), ...(comoComecou?.inicio ?? [])].every((s) => s.origem === 'cliente' && s.revisado === false && s.fonte === 'myid')).toBe(true);
   });
 
   it.each(Object.entries(FAIXA_DE_DURACAO_DO_MYID))('faixa %s aparece como "%s"', (codigo, rotulo) => {
-    const { semData } = montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_duracao: codigo } }) });
-    expect(semData.map((s) => s.detalhe)).toEqual([rotulo]);
+    const { comoComecou } = montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_duracao: codigo } }) });
+    expect(comoComecou?.inicio.map((s) => s.texto)).toEqual([rotulo]);
   });
 
   it.each([['gt2y'], ['constructor'], ['__proto__'], [''], [null], [7], [{}]])('faixa desconhecida %j não aparece (nada de código cru)', (codigo) => {
-    expect(montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_duracao: codigo } }) }).semData).toEqual([]);
+    const r = montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_duracao: codigo } }) });
+    expect(r.semData).toEqual([]);
+    expect(r.comoComecou).toBeNull();
   });
 
   it('MyID que não está concluído não entra: nem o registro, nem o "Sem data"', () => {
     const pendente = myid({ status: 'em_andamento' });
-    const r = montar({ myidConcluidos: [pendente], myidUltimo: { ...pendente, respostas_brutas: { bloco_1_duracao: 'lt6w', bloco_1_quando_data: 'ontem' } } });
+    const r = montar({ myidConcluidos: [pendente], myidUltimo: { ...pendente, respostas_brutas: { bloco_1_queixa: 'dor', bloco_1_duracao: 'lt6w', bloco_1_quando_data: 'ontem' } } });
     expect(r.marcos).toEqual([]);
     expect(r.semData).toEqual([]);
+    expect(r.comoComecou).toBeNull();
   });
 
   it('os rótulos das faixas e das mudanças são os da tela do cliente (Bloco1.tsx)', () => {
@@ -132,7 +139,7 @@ describe('texto livre do cliente nunca vira data', () => {
 
 describe('registros do app (marcador vazado) e fatos (marcador cheio)', () => {
   const todas = (): Partial<FontesClinicas> => ({
-    paciente: { historico_clinico: { ...cirurgias({ tipo: 'Joelho', ano: '2022' }), ultimo_envio: '2026-10-02T12:00:00+00:00' }, historia_atual: null },
+    paciente: { historico_clinico: { ...cirurgias({ id: 'c1', tipo: 'Joelho', ano: '2022' }), ultimo_envio: '2026-10-02T12:00:00+00:00' }, historia_atual: null },
     myidConcluidos: [myid()],
     vinculosMyid: [{ id: 'v1', myid_avaliacao_id: 'm1', created_at: '2026-09-02T12:00:00+00:00' }],
     avaliacoesVoz: [{ id: 'a1', created_at: '2026-10-05T12:00:00+00:00', queixa_principal: 'Dor lombar' }],
@@ -147,7 +154,7 @@ describe('registros do app (marcador vazado) e fatos (marcador cheio)', () => {
   it('natureza, origem, revisado e fonte de cada tipo de marco', () => {
     const porId = Object.fromEntries(montar(todas()).marcos.map((m) => [m.id, m]));
     const confere = (id: string, esperado: Partial<Marco>) => expect(porId[id], id).toMatchObject(esperado);
-    confere('historico_clinico:cirurgia:0', { natureza: 'fato', origem: 'cliente', revisado: false, fonte: 'historico_clinico' });
+    confere('historico_clinico:cirurgia:id:c1', { natureza: 'fato', origem: 'cliente', revisado: false, fonte: 'historico_clinico' });
     confere('historico_clinico:envio', { natureza: 'registro', origem: 'cliente', revisado: false });
     confere('myid:m1', { natureza: 'registro', origem: 'cliente', revisado: false, fonte: 'myid', titulo: 'MyID concluído', data: { iso: '2026-09-02', precisao: 'dia' } });
     confere('avaliacao_voz:a1', { natureza: 'registro', origem: 'profissional', revisado: true, titulo: 'Avaliação presencial registrada', detalhe: 'Queixa principal: Dor lombar' });
@@ -160,9 +167,11 @@ describe('registros do app (marcador vazado) e fatos (marcador cheio)', () => {
   });
 
   it('tudo que veio do cliente é "não revisado" e tudo que o profissional registrou é "revisado" (nunca o contrário)', () => {
-    const { marcos, semData } = montar({ ...todas(), myidUltimo: myid({ respostas_brutas: { bloco_1_quando_data: 'ontem' } }) });
+    const { marcos, semData, comoComecou } = montar({ ...todas(), myidUltimo: myid({ respostas_brutas: { bloco_1_quando_data: 'ontem' } }) });
     for (const m of marcos) expect(m.revisado, m.id).toBe(m.origem === 'profissional');
     for (const s of semData) expect([s.origem, s.revisado]).toEqual(['cliente', false]);
+    expect(comoComecou?.inicio).toHaveLength(1);
+    for (const r of [...(comoComecou?.queixas ?? []), ...(comoComecou?.inicio ?? [])]) expect([r.origem, r.revisado]).toEqual(['cliente', false]);
     expect(new Set(marcos.map((m) => m.origem))).toEqual(new Set(['cliente', 'profissional']));
   });
 
@@ -435,8 +444,8 @@ describe('tolerância ao que vem no jsonb do cliente', () => {
   });
 
   it('número em texto do cliente é aceito como texto ("3"), objeto não', () => {
-    const { semData } = montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_quando_data: 3, bloco_1_quando_desc: { a: 1 } } }) });
-    expect(semData.map((s) => s.detalhe)).toEqual(['3']);
+    const { comoComecou } = montar({ myidUltimo: myid({ respostas_brutas: { bloco_1_quando_data: 3, bloco_1_quando_desc: { a: 1 } } }) });
+    expect(comoComecou?.inicio.map((s) => s.texto)).toEqual(['3']);
   });
 });
 
@@ -755,15 +764,17 @@ describe('ids estáveis dos itens do MyID', () => {
     expect(r.marcos.every((m) => m.fonte === 'myid')).toBe(true);
   });
 
-  it('cada item "Sem data" do MyID leva o id do MyID mais recente + o campo de onde veio', () => {
-    const r = montar({ myidUltimo: myid({ id: 'm9', respostas_brutas: respostas }) });
-    expect(r.semData.map((s) => s.id)).toEqual(['myid:m9:duracao', 'myid:m9:quando', 'myid:m9:o_que_fazia']);
+  const idsDoComoComecou = (r: ReturnType<typeof montar>) => [...(r.comoComecou?.queixas ?? []), ...(r.comoComecou?.inicio ?? [])].map((s) => s.id);
+
+  it('cada resposta do MyID no "Como começou" leva o id do MyID mais recente + o campo de onde veio', () => {
+    const r = montar({ myidUltimo: myid({ id: 'm9', respostas_brutas: { ...respostas, bloco_1_queixa: 'dor' } }) });
+    expect(idsDoComoComecou(r)).toEqual(['myid:m9:queixa', 'myid:m9:duracao', 'myid:m9:quando', 'myid:m9:o_que_fazia']);
   });
 
   it('MyID mais recente sem id usa a posição 0 e continua único e estável', () => {
-    const a = montar({ myidUltimo: myid({ id: undefined, respostas_brutas: respostas }) }).semData.map((s) => s.id);
+    const a = idsDoComoComecou(montar({ myidUltimo: myid({ id: undefined, respostas_brutas: respostas }) }));
     expect(a).toEqual(['myid:i0:duracao', 'myid:i0:quando', 'myid:i0:o_que_fazia']);
-    expect(montar({ myidUltimo: myid({ id: undefined, respostas_brutas: respostas }) }).semData.map((s) => s.id)).toEqual(a);
+    expect(idsDoComoComecou(montar({ myidUltimo: myid({ id: undefined, respostas_brutas: respostas }) }))).toEqual(a);
   });
 
   it('o id do marco e o dos itens do MyID não colidem entre si, nem com os de outras fontes', () => {
@@ -772,7 +783,8 @@ describe('ids estáveis dos itens do MyID', () => {
       ...comHistorico(cirurgias({ tipo: 'Joelho', ano: '2020' }, { tipo: 'Ombro', ano: 'faz tempo' })),
       historiaVida: [{ id: 'm1', data_evento: '2020-01-01', tipo: 'outro', titulo: 'x' }],
     });
-    const ids = [...r.marcos.map((m) => m.id), ...r.semData.map((s) => s.id)];
+    const ids = [...r.marcos.map((m) => m.id), ...r.semData.map((s) => s.id), ...idsDoComoComecou(r)];
+    expect(ids).toHaveLength(7);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain('myid:m1');
     expect(ids).toContain('historia_vida:m1');

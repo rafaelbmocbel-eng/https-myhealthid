@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { lerDadosAvaliacao } from '@/lib/dinamometria/dadosAvaliacao';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Dumbbell, FileUp, Loader2, Trash2, Copy, Save, FlaskConical, X, Bluetooth, Eye } from 'lucide-react';
 import { toast } from 'sonner';
@@ -405,7 +406,7 @@ export default function Dinamometria() {
         .eq('id', exameId);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Relato salvo e interpretação atualizada'); setRelatoEdit(null); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); },
+    onSuccess: () => { toast.success('Relato salvo e interpretação atualizada'); setRelatoEdit(null); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); invalidarFontesClinicas(qc, id); },
     onError: (e: any) => toast.error(e?.message || 'Erro ao salvar o relato'),
   });
 
@@ -428,6 +429,7 @@ export default function Dinamometria() {
       if (n) {
         toast.success(n === 1 ? 'Laudo da dinamometria atualizado com as regras atuais' : `${n} laudos de dinamometria atualizados com as regras atuais`);
         qc.invalidateQueries({ queryKey: ['exames-presenciais', id] });
+        invalidarFontesClinicas(qc, id);
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -467,6 +469,7 @@ export default function Dinamometria() {
       setVerId(novoId || null); setRegVer(null);
       setAba('resultado');
       qc.invalidateQueries({ queryKey: ['exames-presenciais', id] });
+      invalidarFontesClinicas(qc, id);
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao salvar'),
   });
@@ -476,7 +479,7 @@ export default function Dinamometria() {
       const { error } = await (supabase as any).from('exames_presenciais').delete().eq('id', exId);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Avaliação excluída'); setVerId(null); setRegVer(null); setConfirmaExcluir(false); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); },
+    onSuccess: () => { toast.success('Avaliação excluída'); setVerId(null); setRegVer(null); setConfirmaExcluir(false); qc.invalidateQueries({ queryKey: ['exames-presenciais', id] }); invalidarFontesClinicas(qc, id); },
     onError: (e: any) => toast.error(e?.message || 'Erro ao excluir'),
   });
 

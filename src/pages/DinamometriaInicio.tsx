@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Bluetooth, BluetoothOff, CheckCircle2, ChevronDown, Dumbbell, FileText, History, Loader2, Trash2, Search, Target, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -187,6 +188,7 @@ export default function DinamometriaInicio() {
       if (abertoId === excluir.id) setAbertoId(null);
       qc.invalidateQueries({ queryKey: ['din-inicio-historico', pacId] });
       qc.invalidateQueries({ queryKey: ['exames-presenciais'] });
+      if (excluir.tipo === 'teste') invalidarFontesClinicas(qc, pacId ?? undefined);
       setExcluir(null);
     } catch (e: any) {
       toast.error(e?.message || 'Não consegui excluir.');

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +87,7 @@ export default function TestesFuncionaisCard({ pacienteId }: Props) {
     onSuccess: () => {
       toast.success('Teste registrado');
       qc.invalidateQueries({ queryKey: ['testes-func', pacienteId] });
+      invalidarFontesClinicas(qc, pacienteId);
       setResultado(''); setClassificacao(''); setObs('');
     },
     onError: (e: any) => toast.error(e.message || 'Erro'),
@@ -95,6 +97,7 @@ export default function TestesFuncionaisCard({ pacienteId }: Props) {
     if (!confirm('Apagar este teste?')) return;
     await (supabase as any).from('testes_funcionais_paciente').delete().eq('id', id);
     qc.invalidateQueries({ queryKey: ['testes-func', pacienteId] });
+    invalidarFontesClinicas(qc, pacienteId);
   };
 
   return (

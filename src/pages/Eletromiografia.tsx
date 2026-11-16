@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { Activity, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
@@ -441,6 +442,7 @@ export default function Eletromiografia({ fabrica = fabricaPadrao }: Props) {
       toast.success(pedido.atualizarId ? 'Eletromiografia atualizada nos exames presenciais do paciente' : 'Eletromiografia salva nos exames presenciais do paciente');
       setGravado({ id, insumos: pedido.insumos });
       void qc.invalidateQueries({ queryKey: ['exames-presenciais', pedido.insumos.pacienteId] });
+      void invalidarFontesClinicas(qc, pedido.insumos.pacienteId);
     },
     onError: (erro: unknown) => {
       // O exame que a tela achava ter salvo não existe mais: o próximo toque em Salvar cria um novo.

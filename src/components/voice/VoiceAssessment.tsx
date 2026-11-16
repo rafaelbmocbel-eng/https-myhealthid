@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -869,6 +870,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['alerta-relato-paciente', pacienteId] });
+        invalidarFontesClinicas(queryClient, pacienteId);
       }
       onAssessmentComplete?.(assessmentToSave);
 

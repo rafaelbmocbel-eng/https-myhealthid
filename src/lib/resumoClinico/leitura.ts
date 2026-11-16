@@ -50,7 +50,10 @@ export const MUDANCAS_DO_MYID: Record<string, string> = {
 };
 
 export interface CirurgiaLida {
-  // Posição no array original: mantém o id do marco estável mesmo com itens-lixo no meio.
+  // Id que o formulário do cliente grava em cada item (HistoricoClinicoCard). Vazio nos itens antigos, sem id.
+  id: string;
+  // Posição no array original: é a chave de reserva do marco quando o item não tem id, e se mantém igual mesmo com
+  // itens-lixo no meio.
   indice: number;
   tipo: string;
   anoOriginal: unknown;
@@ -89,7 +92,7 @@ export function lerHistoricoClinico(bruto: unknown): HistoricoClinicoLido {
     const o = objeto(item);
     const tipo = textoLimpo(o?.tipo);
     if (!o || !tipo) return;
-    cirurgias.push({ indice, tipo, anoOriginal: o.ano, complicacoes: textoLimpo(o.complicacoes) });
+    cirurgias.push({ id: textoLimpo(o.id), indice, tipo, anoOriginal: o.ano, complicacoes: textoLimpo(o.complicacoes) });
   });
 
   const medicamentos: MedicamentoLido[] = [];

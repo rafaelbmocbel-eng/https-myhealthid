@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { supabase } from '@/integrations/supabase/client';
 import { ehRelatoDoPaciente } from '@/utils/voiceAssessment/origemAvaliacao';
 
@@ -267,6 +268,7 @@ export function useHistoriaVidaMutation(pacienteId: string) {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['historia_vida', pacienteId] });
     qc.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
+    invalidarFontesClinicas(qc, pacienteId);
   };
 
   const adicionar = useMutation({

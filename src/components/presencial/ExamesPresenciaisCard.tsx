@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,6 +103,7 @@ export default function ExamesPresenciaisCard({ pacienteId, soLeitura = false, d
       setTipoSel(''); setDados({});
       setDataExame(new Date().toISOString().slice(0, 10));
       qc.invalidateQueries({ queryKey: ['exames-presenciais', pacienteId] });
+      invalidarFontesClinicas(qc, pacienteId);
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao registrar'),
   });
@@ -111,7 +113,7 @@ export default function ExamesPresenciaisCard({ pacienteId, soLeitura = false, d
       const { error } = await (supabase as any).from('exames_presenciais').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Exame removido'); qc.invalidateQueries({ queryKey: ['exames-presenciais', pacienteId] }); },
+    onSuccess: () => { toast.success('Exame removido'); qc.invalidateQueries({ queryKey: ['exames-presenciais', pacienteId] }); invalidarFontesClinicas(qc, pacienteId); },
     onError: (e: any) => toast.error(e.message),
   });
 

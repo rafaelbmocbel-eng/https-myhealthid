@@ -27,16 +27,20 @@ export type FonteDoMarco =
   | 'teste_funcional'
   | 'escala';
 
-export type TipoDoMarco =
-  | 'cirurgia'
-  | 'evento_de_vida'
-  | 'diagnostico'
-  | 'myid'
-  | 'historico'
-  | 'avaliacao'
-  | 'exame'
-  | 'teste'
-  | 'escala';
+// Lista de verdade dos tipos: o filtro por tipo confere cada um e um tipo novo precisa ganhar categoria (ou ficar só em "Tudo").
+export const TIPOS_DE_MARCO = [
+  'cirurgia',
+  'evento_de_vida',
+  'diagnostico',
+  'myid',
+  'historico',
+  'avaliacao',
+  'exame',
+  'teste',
+  'escala',
+] as const;
+
+export type TipoDoMarco = (typeof TIPOS_DE_MARCO)[number];
 
 export interface Marco {
   // Estável entre leituras: fonte + id da origem (+ posição, nos itens de uma lista do cliente).
@@ -64,6 +68,41 @@ export interface ItemSemData {
   fonte: FonteDoMarco;
   origem: OrigemDoDado;
   revisado: boolean;
+  // Só nas cirurgias que o cliente relatou: é o que deixa a tela escrever "Cirurgia ou internação: <texto>" sem adivinhar
+  // pela fonte (tituloParaExibir).
+  tipo?: TipoDoMarco;
+}
+
+// Uma resposta do cliente sobre o começo do quadro, com o rótulo exato da pergunta e o texto como ele escreveu. Nunca vira
+// data, nunca é somada nem comparada com outra: se o cliente diz "mais de 3 anos" num lugar e "mais de 1 ano" noutro, as
+// duas ficam à vista, lado a lado.
+export interface RelatoDoCliente {
+  // Estável entre leituras: fonte + id do MyID (ou o campo da história atual) + o campo de onde veio.
+  id: string;
+  rotulo: string;
+  texto: string;
+  fonte: FonteDoMarco;
+  origem: 'cliente';
+  revisado: false;
+}
+
+// Cartão "Como começou": o que o cliente contou sobre a queixa e sobre o começo, sem data inventada.
+export interface ComoComecou {
+  queixas: RelatoDoCliente[];
+  inicio: RelatoDoCliente[];
+  // Dia em que a conclusão do MyID de onde vieram as respostas (fonte "myid") foi registrada no histórico, pela mesma regra
+  // do marco "MyID concluído". Sem o vínculo não há data confiável e fica nulo: nunca o updated_at do MyID. As respostas da
+  // história atual não têm data.
+  diaDoMyid: DataDoMarco | null;
+}
+
+// Registro que ficou fora da linha do tempo por falta de uma data que dê para confiar.
+export interface RegistroIgnorado {
+  id: string;
+  fonte: FonteDoMarco;
+  // Como o profissional reconhece o registro (título, nome do exame...).
+  rotulo: string;
+  motivo: string;
 }
 
 export interface SecaoDoResumo {
@@ -88,6 +127,10 @@ export interface LinhaDoTempo {
   // Registros do profissional que ficaram de fora porque a data não é válida (ex.: "0001-01-01", no futuro).
   // Diagnóstico e exame importado sem data NÃO entram aqui: vão para "Sem data".
   ignorados: number;
+  // Quais foram, na ordem em que foram lidos; tem sempre `ignorados` itens.
+  registrosIgnorados: RegistroIgnorado[];
+  // O que o cliente contou sobre o começo do quadro (queixas e respostas de início). Nulo quando não há nada.
+  comoComecou: ComoComecou | null;
 }
 
 // Linha lida do banco: pode vir com qualquer coisa nos campos (a tela não confia no formato).
@@ -138,6 +181,18 @@ export type ChaveDaFonte =
   | 'testesFuncionais'
   | 'escalas';
 
+// Fonte que traz uma lista com limite (todas menos o histórico do paciente).
+export type ChaveDeLista = Exclude<ChaveDaFonte, 'paciente'>;
+
+// A leitura pediu limite + 1 linhas e veio mais que o limite: a lista está cortada nas mais recentes.
+export interface CorteDeFonte {
+  fonte: ChaveDeLista;
+  nome: string;
+  limite: number;
+  // Frase pronta para a tela, por exemplo "Diagnósticos: mostrando os 200 mais recentes."
+  texto: string;
+}
+
 // Texto do aviso "Não consegui ler ...".
 export const ROTULO_DA_FONTE: Record<ChaveDaFonte, string> = {
   paciente: 'o histórico clínico e a história atual do cliente',
@@ -163,12 +218,37 @@ export const STATUS_DE_EXAME_IMPORTADO_CONCLUIDO = 'processado';
 // `resultado` inteiro, que é pesado e tem dado clínico que esta tela não usa).
 export const CAMPO_ORIGEM_DO_RELATO = 'origem_do_relato';
 
+// Como o profissional reconhece de onde veio um registro, na lista dos que ficaram de fora.
+export const NOME_DA_FONTE_DO_MARCO: Record<FonteDoMarco, string> = {
+  myid: 'MyID',
+  historico_clinico: 'Histórico clínico',
+  historia_atual: 'História atual',
+  historia_vida: 'História de vida',
+  diagnostico: 'Diagnóstico',
+  avaliacao_voz: 'Avaliação presencial',
+  exame_presencial: 'Exame presencial',
+  exame_importado: 'Exame importado',
+  teste_funcional: 'Teste funcional',
+  escala: 'Escala',
+};
+
+export const ROTULO_CIRURGIA_DO_CLIENTE = 'Cirurgia ou internação';
+export const MOTIVO_DATA_NAO_VALIDA = 'data ausente, inválida ou no futuro';
+
+// Rótulos exatos das perguntas do cliente (os mesmos que já apareciam nos títulos de "Sem data").
+export const ROTULO_QUEIXA_HISTORIA_ATUAL = 'Queixa principal (história atual)';
+export const ROTULO_QUEIXA_MYID = 'Queixa principal (MyID)';
+export const ROTULO_INICIO_HISTORIA_ATUAL = 'Há quanto tempo começou (história atual)';
+export const ROTULO_FAIXA_MYID = 'Quando começou (faixa escolhida no MyID)';
+export const ROTULO_QUANDO_MYID = 'Quando começou (texto escrito no MyID)';
+export const ROTULO_O_QUE_FAZIA_MYID = 'O que estava fazendo quando notou (MyID)';
+
 export const SELO_CLIENTE = 'Relatado pelo cliente, não revisado';
 export const SELO_PROFISSIONAL = 'Registrado pelo profissional';
 export const ROTULO_REGISTRO_NO_APP = 'registro no app';
 
 export const TITULO_MYID_CONCLUIDO = 'MyID concluído';
-export const DETALHE_MYID_CONCLUIDO = 'Data em que a conclusão foi registrada no histórico do paciente.';
+export const DETALHE_MYID_CONCLUIDO = 'Concluído e registrado no histórico do paciente.';
 // updated_at do MyID é mudado por qualquer update (trigger), até por correção de cálculo meses depois: sem a data do
 // histórico, não se afirma "concluído".
 export const TITULO_MYID_ULTIMO_REGISTRO = 'MyID (último registro)';

@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 
 export interface ReprocessarComplementoInput {
   avaliacaoId: string;
@@ -178,4 +179,5 @@ export function invalidarCachesAvaliacaoVoz(qc: QueryClient, pacienteId: string)
   qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
   qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
   qc.invalidateQueries({ queryKey: ['prontuario'] });
+  invalidarFontesClinicas(qc, pacienteId);
 }

@@ -1126,6 +1126,32 @@ describe('Eletromiografia: lista de pacientes', () => {
 describe('Eletromiografia: salvar de novo', () => {
   type LinhaExame = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+  it('salvar e atualizar o exame avisam a linha do tempo clínica do paciente certo, e só dele', async () => {
+    const chave = (paciente: string) => ['fontes-clinicas', paciente, 'prof-1'];
+    const mundo = criarMundo();
+    const { qc } = montar(mundo.fabrica);
+    // Este arquivo usa gcTime 0, que apagaria na hora uma consulta sem tela aberta: aqui ela precisa ficar no cache.
+    qc.setQueryDefaults(['fontes-clinicas'], { gcTime: Infinity });
+    for (const paciente of ['p1', 'p2']) qc.setQueryData(chave(paciente), { fontes: {}, falhas: [], cortes: [] });
+    await conectarReal();
+    await gravarRepouso();
+    expect(qc.getQueryState(chave('p1'))?.isInvalidated).toBe(false);
+    fireEvent.click(botao('Salvar no prontuário'));
+    await passar(200);
+    expect(h.banco.tabelas.exames_presenciais).toHaveLength(1);
+    expect(qc.getQueryState(chave('p1'))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(chave('p2'))?.isInvalidated).toBe(false);
+
+    // A atualização do mesmo exame também muda o que a linha do tempo mostra (o resumo do exame).
+    qc.setQueryData(chave('p1'), { fontes: {}, falhas: [], cortes: [] });
+    expect(qc.getQueryState(chave('p1'))?.isInvalidated).toBe(false);
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'Outra observação' } });
+    fireEvent.click(botao('Atualizar exame salvo'));
+    await passar(200);
+    expect(qc.getQueryState(chave('p1'))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(chave('p2'))?.isInvalidated).toBe(false);
+  });
+
   it('só observações e visibilidade mudaram depois de salvar: "Atualizar exame salvo" muda a MESMA linha, sem criar outra', async () => {
     const mundo = criarMundo();
     montar(mundo.fabrica);

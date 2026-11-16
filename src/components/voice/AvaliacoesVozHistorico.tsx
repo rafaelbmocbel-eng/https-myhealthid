@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { useState } from 'react';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -69,6 +70,7 @@ export default function AvaliacoesVozHistorico({ pacienteId, patientName, servic
       toast({ title: 'Avaliação excluída' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
       qc.invalidateQueries({ queryKey: ['alerta-relato-paciente'] });
+      invalidarFontesClinicas(qc, pacienteId);
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {

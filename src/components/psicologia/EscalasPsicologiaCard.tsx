@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { Brain, Plus, TrendingUp, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { invalidarFontesClinicas } from '@/hooks/useFontesClinicas';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -169,6 +170,7 @@ export default function EscalasPsicologiaCard({ pacienteId }: Props) {
       if (error) throw error;
       toast({ title: 'Escala salva', description: `${META[tipo].sigla}: ${scoreAtual} — ${c.classificacao}` });
       qc.invalidateQueries({ queryKey: ['escalas-psi', pacienteId] });
+      invalidarFontesClinicas(qc, pacienteId);
       setOpen(false);
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
