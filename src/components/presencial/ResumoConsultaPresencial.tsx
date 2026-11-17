@@ -22,6 +22,8 @@ interface Props {
   patientName: string;
   serviceType?: 'identidade' | 'cobzero' | 'studio';
   onAssessmentComplete?: () => void;
+  // O botão "Nova Avaliação" do topo da aba soma 1 a cada toque: abre o registro de uma avaliação nova e leva até ele.
+  novaAvaliacaoPedida?: number;
 }
 
 // Região com rastreabilidade de fonte (apenas dor explicitamente relatada pelo paciente)
@@ -37,6 +39,7 @@ export default function ResumoConsultaPresencial({
   patientName,
   serviceType = 'identidade',
   onAssessmentComplete,
+  novaAvaliacaoPedida = 0,
 }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -44,10 +47,23 @@ export default function ResumoConsultaPresencial({
   const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [mostrarNovoRegistro, setMostrarNovoRegistro] = useState(false);
   const autoProcessadoRef = useRef(false);
+  const secaoRef = useRef<HTMLDivElement>(null);
+  const pedidoAoAbrir = useRef(novaAvaliacaoPedida);
   const saveEvento = useSaveEventoAnatomico();
   const qc = useQueryClient();
 
   const mostraAvatar = temBloco(lente, 'avatar');
+
+  // Sem avaliação anterior o registro já está à vista; com uma, o toque do topo faz o mesmo que "Nova avaliação" daqui.
+  // Em ambos os casos rola até o registro: ele fica depois de vários cartões e, sem isso, o toque parece não ter feito nada.
+  useEffect(() => {
+    if (novaAvaliacaoPedida <= pedidoAoAbrir.current) return;
+    setMostrarNovoRegistro(true);
+    const rolar = window.setTimeout(() => {
+      secaoRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => window.clearTimeout(rolar);
+  }, [novaAvaliacaoPedida]);
 
   // Última avaliação por voz — achados estruturados em resultado._meta
   const { data: latestAval, isLoading: loadingAval } = useQuery({
@@ -275,7 +291,7 @@ export default function ResumoConsultaPresencial({
     autoProcessadoRef.current; // só aparece se o auto-processamento já tentou e não funcionou
 
   return (
-    <div className="space-y-3">
+    <div ref={secaoRef} id="nova-avaliacao" className="space-y-3 scroll-mt-20">
       <SafetyBanner pacienteId={pacienteId} />
 
       {/* Indicador de processamento automático em background */}

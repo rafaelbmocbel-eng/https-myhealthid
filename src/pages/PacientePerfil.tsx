@@ -184,6 +184,7 @@ export default function PacientePerfil() {
   });
   const [submittingEdit, setSubmittingEdit] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [novaAvaliacaoPedida, setNovaAvaliacaoPedida] = useState(0);
   const { membros: membrosEquipe } = useEquipe();
   const { convenios } = useConvenios();
 
@@ -1124,15 +1125,19 @@ export default function PacientePerfil() {
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
           <TabsContent value="presencial" className="mt-4 space-y-4">
             <Suspense fallback={LazyFallback}>
-            <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10 p-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                <Plus className="h-5 w-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">Nova Avaliação</p>
-                <p className="text-[11px] text-muted-foreground">Registre uma nova avaliação presencial ou por voz para este paciente.</p>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setNovaAvaliacaoPedida((n) => n + 1)}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10 p-3 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="h-9 w-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <Plus className="h-5 w-5 text-primary" aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-foreground">Nova Avaliação</span>
+                <span className="block text-[11px] text-muted-foreground">Registre uma nova avaliação presencial ou por voz para este paciente.</span>
+              </span>
+            </button>
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
@@ -1156,6 +1161,7 @@ export default function PacientePerfil() {
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
+              novaAvaliacaoPedida={novaAvaliacaoPedida}
               onAssessmentComplete={() => {
                 qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
                 qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
