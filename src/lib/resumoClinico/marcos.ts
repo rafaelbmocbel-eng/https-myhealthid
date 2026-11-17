@@ -1,6 +1,6 @@
 import { tipoExame } from '@/lib/examesPresenciais';
 import { ehRelatoDoPaciente, ORIGENS_PACIENTE } from '@/utils/voiceAssessment/origemAvaliacao';
-import { anoDaData, anoDoHistorico, coincideComODiaDoCadastro, dataDeTabela, formatarData } from './datas';
+import { anoDaData, anoDoHistorico, dataDeTabela, dataDoDiagnosticoPodeSerDoSistema, formatarData } from './datas';
 import {
   humanizarCodigo, lerHistoriaAtual, lerHistoricoClinico, lerRespostasDoMyid, myidConcluido, textoLimpo,
 } from './leitura';
@@ -282,8 +282,9 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
     const titulo = `${cid ? `[${cid}] ` : ''}${textoLimpo(linha.cid_descricao) || 'Diagnóstico'}`;
     const id = idDaLinha('diagnostico', linha, posicao);
     const data = dataDeTabela(linha.data_diagnostico, hoje);
-    // data_diagnostico é DEFAULT CURRENT_DATE e o app não a envia: igual ao dia do cadastro, não conta como data do fato.
-    const doCadastro = coincideComODiaDoCadastro(linha.data_diagnostico, linha.created_at, hoje);
+    // Linha anterior ao corte: data_diagnostico era DEFAULT CURRENT_DATE e o app não a enviava, então igual ao dia do
+    // cadastro não conta como data do fato. Linha depois do corte: o valor (data ou null) é do profissional e vale.
+    const doCadastro = dataDoDiagnosticoPodeSerDoSistema(linha.data_diagnostico, linha.created_at, hoje);
     if (data && !doCadastro) {
       doProfissional({ id, data, titulo, tipo: 'diagnostico', rotuloTipo: 'Diagnóstico', fonte: 'diagnostico', natureza: 'fato' });
       return;

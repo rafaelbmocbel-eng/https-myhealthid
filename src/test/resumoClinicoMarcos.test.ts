@@ -539,9 +539,11 @@ describe('exames importados: só entram os que a importação terminou com suces
 });
 
 describe('diagnóstico: data igual ao dia do cadastro é o DEFAULT CURRENT_DATE do banco, não a data do fato', () => {
-  // diagnosticos_paciente.data_diagnostico é `date DEFAULT CURRENT_DATE` (migração 20260607211619) e o insert do app
-  // (DiagnosticosCID10Card) não a envia: o banco a preenche com o dia do cadastro, em UTC. Essa data não prova que o
-  // profissional a informou. Limite assumido: uma data real que coincida por acaso com o dia do cadastro também vai para "Sem data".
+  // diagnosticos_paciente.data_diagnostico é `date DEFAULT CURRENT_DATE` (migração 20260607211619) e, até o corte de
+  // 18/11/2026, o insert do app (DiagnosticosCID10Card) não a enviava: o banco a preenchia com o dia do cadastro, em UTC. Essa
+  // data não prova que o profissional a informou. Limite assumido: uma data real que coincida por acaso com o dia do cadastro
+  // de uma linha ANTERIOR ao corte também vai para "Sem data". Depois do corte, a regra é outra
+  // (resumoClinicoDataExplicitaDoDiagnostico.test.ts); as linhas daqui são de antes do corte ou têm created_at que não vale.
   const NOTA = 'A data do diagnóstico é a do dia do cadastro no app e pode ter sido preenchida pelo sistema';
   const diag = (extra: LinhaBruta): LinhaBruta => ({ id: 'd', data_diagnostico: '2019-03-04', cid_codigo: 'M54.5', cid_descricao: 'Dor lombar baixa', created_at: '2026-02-03T15:00:00+00:00', ativo: true, tipo: 'principal', ...extra });
   const semDataDe = (linha: LinhaBruta) => montar({ diagnosticos: [linha] });

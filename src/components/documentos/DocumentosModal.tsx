@@ -250,7 +250,8 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
         (supabase as any).from('diagnosticos_paciente')
           .select('cid_codigo, cid_descricao, data_diagnostico')
           .eq('paciente_id', paciente.id).eq('ativo', true)
-          .order('data_diagnostico', { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
+          // Pelo cadastro mais recente, não pela data do diagnóstico: a data é opcional e um CID novo sem data iria para o fim.
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
         (supabase as any).from('pacientes')
           .select('queixa_principal, condicoes_preexistentes, medicamentos_uso')
           .eq('id', paciente.id).maybeSingle(),

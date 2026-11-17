@@ -15,8 +15,10 @@ saúde enviado a provedor externo); **só o profissional vê**, no perfil do pac
 | **Completo** | mesmo cartão, seletor em "Completo" | **não**: só leitura, botão "Copiar" |
 | **Linha do tempo clínica** | cartão logo abaixo, na aba Clínico; sem avaliação por voz ela aparece sozinha | não |
 
-Tudo é **calculado na hora**. **Nada novo é gravado**: nem nota de prontuário, nem `historia_vida_paciente`, nem
-`avaliacoes_voz`, nem coluna nova; nenhuma migração. O Completo e a linha do tempo **não passam** por
+Tudo é **calculado na hora**. **Nada novo é gravado** pelo Completo nem pela linha do tempo: nem nota de prontuário, nem
+`historia_vida_paciente`, nem `avaliacoes_voz`, nem coluna nova; nenhuma migração. (A única gravação ligada a este assunto é o campo
+opcional "Data do diagnóstico" do **cartão de CID**, que é do cartão e não da linha do tempo: ver "A data do diagnóstico que o banco
+preenche sozinho".) O Completo e a linha do tempo **não passam** por
 `sincronizarProntuario`, `toggleConfirmacao`, `salvarEdicao` nem pela pré-confirmação, e **não são uma seção** de `SECOES`
 (`AvaliacaoSecoesEditaveis.tsx`): essas seções são pré-confirmadas e vão sozinhas ao prontuário, que o cliente pode ler.
 
@@ -40,7 +42,7 @@ diz "as datas de conclusão do MyID" e os MyIDs aparecem como "último registro"
 | `myid_avaliacoes` (status `concluido`) + `avaliacoes_identidade.created_at` ligada a ele | marco **registro** "MyID concluído" (data do histórico); sem a ligação, "MyID (último registro)" com `updated_at` e aviso | cliente |
 | `avaliacoes_voz` (só as do profissional, mesmo filtro da avaliação atual) | marco **registro** | profissional: "Registrado pelo profissional" |
 | `historia_vida_paciente.data_evento` | marco **fato** | profissional |
-| `diagnosticos_paciente` **ativos** e do tipo **principal** ou **secundário**, com `data_diagnostico` válida **e diferente do dia do cadastro** | marco **fato** | profissional |
+| `diagnosticos_paciente` **ativos** e do tipo **principal** ou **secundário**, com `data_diagnostico` válida (e, nas linhas criadas **antes de 18/11/2026**, **diferente do dia do cadastro**) | marco **fato** | profissional |
 | `exames_presenciais.data_exame` | marco **registro** | profissional |
 | `exames_importados` com `status = 'processado'` e `data_exame` válida | marco **registro**, com o aviso "Data lida automaticamente do documento; confira no arquivo." | profissional |
 | `testes_funcionais_paciente.data_teste`, `escalas_psicologia.data_aplicacao` | marco **registro** | profissional |
@@ -68,27 +70,60 @@ Valores conferidos em `20260607211619`: `tipo` é `principal | secundario | susp
   leitura não trouxe a coluna; nesse caso não se afirma nada.
 - Diagnóstico removido ou suspeito não vai nem para "Sem data" nem para o aviso de registros ignorados: some por inteiro.
 
-#### A data do diagnóstico que o banco preenche sozinho
+#### A data do diagnóstico que o banco preenche sozinho (e o campo novo no cartão de CID)
 
-`diagnosticos_paciente.data_diagnostico` é `date DEFAULT CURRENT_DATE` (migração `20260607211619`) e **nenhum código do app a grava**:
-o `insert` de `DiagnosticosCID10Card.tsx` não envia a coluna, então o banco a preenche com o **dia do cadastro**. Sem tratamento, todo
+`diagnosticos_paciente.data_diagnostico` é `date DEFAULT CURRENT_DATE` (migração `20260607211619`; **aceita `null`**: a coluna não é
+`NOT NULL` e nenhuma migração posterior a mudou). **Até o corte, nenhum código do app a gravava**: o `insert` de
+`DiagnosticosCID10Card.tsx` não enviava a coluna, então o banco a preenchia com o **dia do cadastro**. Sem tratamento, todo
 diagnóstico ativo viraria um marco "fato" no dia em que foi cadastrado no app, e o Rafael pediu para evitar isso (data que o sistema
 preenche sozinho não é data real).
 
-Regra: `data_diagnostico` só vale como data do fato quando é **diferente do dia de `created_at`**, tanto no **dia em UTC** (o
-`CURRENT_DATE` usa o fuso do banco) quanto no **dia do Brasil**. Igual a qualquer um dos dois: o diagnóstico vai para a faixa
-**"Sem data"**, com "Registrado no app em dd/mm/aaaa" (o mesmo caminho do diagnóstico sem data) e a nota "A data do diagnóstico é a do
-dia do cadastro no app e pode ter sido preenchida pelo sistema". Isso vale também quando a data seria "amanhã" para o Brasil (entre
-21h e meia-noite o `CURRENT_DATE` em UTC já é o dia seguinte): a nota diz que veio do cadastro, não que é "inválida".
+**O campo "Data do diagnóstico" (decisão do Rafael).** O formulário de adicionar do cartão de CID ganhou um campo **opcional** de data,
+**vazio por padrão**, com a ajuda "Opcional. Sem data, o diagnóstico fica em Sem data na linha do tempo." Vazio continua "sem data";
+preenchido vira marco com a data real. O campo é um `input date` de 44 px, com `max` = hoje no fuso do Brasil (`hojeLocalISO`) e `min`
+1900-01-01; data no futuro ou antes de 1900 é recusada (aviso na tela e toast, nada é gravado), pela mesma régua da linha do tempo
+(`erroDaDataDigitada`), para o que se grava nunca cair em "data inválida" ali.
 
-- Uma data bem diferente do dia do cadastro (2019-03-04 em registro de 2026) continua marco **fato**.
-- **Limitação assumida:** um diagnóstico cuja data real coincida por acaso com o dia do cadastro (o profissional cadastra no mesmo dia em
-  que diagnosticou) também vai para "Sem data". Não há como separar esse caso do preenchimento automático sem gravar algo novo.
-- **`created_at` nulo ou inválido:** sem o dia do cadastro não há com o que comparar, então só a data válida decide (ela vira marco).
-  `created_at` é `NOT NULL`, então vazio só aparece se a leitura não trouxe a coluna; descartar a data nesse caso perderia uma data que o
-  profissional pode ter digitado, e a regra estrita de data (válida, não futura, de 1900 em diante) continua valendo.
-- Se um dia o app passar a gravar `data_diagnostico` de verdade (campo na tela), esta regra deve ser revista: ela deixaria de ser
-  necessária para os cadastros novos e passaria só a esconder a data real igual ao dia do cadastro.
+- **O `insert` manda SEMPRE a coluna**: a data escolhida ou `null` quando vazio. É isso que impede o `DEFAULT` do banco de preencher com
+  o dia do cadastro.
+- **Cada diagnóstico da lista mostra a data** ("Data do diagnóstico: 04/03/2019" ou "sem data") e um botão de 44 px, **"Informar data"**
+  (sem data) ou **"Corrigir data"** (com data). Ele abre um editor com **Salvar data**, **Limpar data** (só onde há data; grava `null`) e
+  **Cancelar**. A gravação é um `update` de `data_diagnostico` com `.eq('id', ...)` **e** `.eq('paciente_id', ...)`: só o diagnóstico
+  certo. Erro do banco aparece em toast e **não** invalida nada; sucesso invalida a lista e a linha do tempo (`invalidarFontesClinicas`).
+  "Salvar data" fica desligado com o campo vazio (tirar a data é o "Limpar data").
+- **Aviso na lista:** "Pode ter sido preenchida pelo sistema" aparece ao lado da data **só** quando
+  `dataDoDiagnosticoPodeSerDoSistema` vale para aquela linha: a mesma função que a linha do tempo usa (que por dentro reaproveita
+  `coincideComODiaDoCadastro`). A lista mostra o valor que está no banco, sem esconder nem inventar nada.
+- Nada de IA, nenhuma migração, nenhuma mudança do que o cliente vê.
+
+**O corte: 18/11/2026 à meia-noite no Brasil (`2026-11-18T03:00:00Z`).** A constante `INSTANTE_DA_DATA_EXPLICITA_DO_DIAGNOSTICO`
+(`src/lib/resumoClinico/tipos.ts`) é o instante a partir do qual toda linha foi gravada **com a coluna explícita** (o deploy do campo
+acontece antes dele). A regra de `marcos.ts` passa a depender de `created_at`:
+
+| `created_at` da linha | `data_diagnostico` igual ao dia do cadastro | `null` ou vazio |
+| --- | --- | --- |
+| **a partir do corte** (válido, com fuso, `>=` o instante) | **marco "fato"** com a data real (diagnosticou e registrou no mesmo dia) | "Sem data" com "A data do diagnóstico não foi informada" |
+| **antes do corte**, inválido, ausente, sem fuso ou no futuro | regra antiga: "Sem data" com "A data do diagnóstico é a do dia do cadastro no app e pode ter sido preenchida pelo sistema" | "Sem data" com "não foi informada" |
+
+- A virada é exata: `2026-11-18T03:00:00Z` (ou `2026-11-18T00:00:00-03:00`) já é depois do corte; um segundo antes
+  (`02:59:59Z`, `23:59:59-03:00` do dia 17) ainda é a regra antiga.
+- Depois do corte continuam valendo as regras de data: **no futuro, inexistente ou antes de 1900** vai para "Sem data" com "A data do
+  diagnóstico registrada não é válida"; data antiga explícita (2019-03-04) é marco; removido e suspeita seguem fora de tudo.
+- **`created_at` ilegível** (nulo, vazio, texto, só a data sem hora, hora **sem fuso** ou data no futuro) **não conta como depois do
+  corte**: sem o instante exato, vale a regra antiga, o lado cauteloso (a data coincidente fica em "Sem data"). Sem o dia do cadastro
+  (nulo, vazio, texto), a regra antiga não tem com o que comparar e só a data válida decide (ela vira marco), como sempre foi.
+- Regra antiga, para as linhas de antes do corte: `data_diagnostico` só vale como data do fato quando é **diferente do dia de
+  `created_at`**, tanto no **dia em UTC** (o `CURRENT_DATE` usa o fuso do banco) quanto no **dia do Brasil**. Igual a qualquer um dos
+  dois: o diagnóstico vai para a faixa **"Sem data"**, com "Registrado no app em dd/mm/aaaa" (o mesmo caminho do diagnóstico sem data) e a
+  nota acima. Isso vale também quando a data seria "amanhã" para o Brasil (entre 21h e meia-noite o `CURRENT_DATE` em UTC já é o dia
+  seguinte): a nota diz que veio do cadastro, não que é "inválida". Uma data bem diferente do dia do cadastro continua marco **fato**.
+- **Limitação assumida:** o diagnóstico criado **ANTES do corte** cuja data real coincidiu por acaso com o dia do cadastro (o
+  profissional cadastrou no mesmo dia em que diagnosticou) **continua em "Sem data"**: não há como separar esse caso do preenchimento
+  automático sem gravar algo novo. Informar ou corrigir a data de um CID antigo pelo campo novo **não muda isso** se a nova data for o
+  próprio dia do cadastro dele: a linha segue em "Sem data" (com a nota), porque o app não tem como saber que foi o profissional.
+  Uma data de outro dia vira marco normalmente.
+- **Depende de o deploy do campo acontecer antes do corte.** Linha criada depois do corte por um app antigo (aba aberta com a versão
+  anterior) teria a data preenchida pelo banco e seria lida como real. É o risco aceito pelo dono ao escolher a data do corte.
 
 ### Exames importados: só os que terminaram com sucesso
 
@@ -126,7 +161,7 @@ segunda barreira.
   Ela não aparecia na linha do tempo; só no Resumo Completo.) Em "Sem data" ficam só a cirurgia do cliente com o ano que não é
   ano de verdade e o diagnóstico e o exame importado do profissional sem a data do fato.
 - **Diagnóstico e exame importado do profissional sem data do fato** (sem `data_diagnostico` / `data_exame`, ou com data inválida
-  ou no futuro, ou, no diagnóstico, igual ao dia do cadastro: ver "A data do diagnóstico que o banco preenche sozinho") **não viram marco com a data de `created_at`**: a data em que foi gravado no app não é a data do fato. Vão para a
+  ou no futuro, ou, no diagnóstico de antes do corte de 18/11/2026, igual ao dia do cadastro: ver "A data do diagnóstico que o banco preenche sozinho") **não viram marco com a data de `created_at`**: a data em que foi gravado no app não é a data do fato. Vão para a
   faixa **"Sem data"** com o próprio selo (**"Registrado pelo profissional"**) e o detalhe diz o que faltou e quando foi gravado,
   por exemplo: "Diagnóstico · A data do diagnóstico não foi informada · Registrado no app em 03/02/2026" (dia do Brasil). Se
   `created_at` também não for uma data, a frase "Registrado no app em ..." simplesmente não aparece.
@@ -371,7 +406,7 @@ depois dos 30 s do `staleTime`, para o profissional que editou em outra aba ou t
 
 | Fonte lida pela linha do tempo | Onde grava | Arquivo |
 |---|---|---|
-| `diagnosticos_paciente` | adicionar e remover (marca `ativo = false`) | `DiagnosticosCID10Card.tsx` |
+| `diagnosticos_paciente` | adicionar, remover (marca `ativo = false`) e informar, corrigir ou limpar a data | `DiagnosticosCID10Card.tsx` |
 | `exames_presenciais` | registrar e remover | `ExamesPresenciaisCard.tsx` |
 | `exames_presenciais` | salvar relato, atualizar laudo com as regras atuais, salvar e excluir a avaliação de dinamometria | `pages/Dinamometria.tsx` |
 | `exames_presenciais` | excluir um exame no histórico (só quando o item excluído é um exame; treino é `notas_prontuario`) | `pages/DinamometriaInicio.tsx` |
@@ -406,6 +441,10 @@ continua lá); elas não executam a tela.
 
 ## Limites conhecidos
 
+- **Atestado (`DocumentosModal.tsx`)**: o CID que o modal sugere ao abrir passou a ser o último **cadastrado** (`created_at`), não o de
+  data de diagnóstico mais recente. A data virou opcional e um CID novo sem data iria para o fim da fila. Um teste
+  (`documentosModalCid.test.ts`) trava essa ordem.
+
 - Se a avaliação por voz existe mas nenhuma seção tem texto ("Nenhuma seção disponível nesta avaliação"), a linha do tempo não
   aparece naquele cartão vazio.
 - No Completo, o lápis do cabeçalho continua editando o **Resumo** (não o Completo). **O seletor volta para "Resumo" ao abrir o
@@ -421,8 +460,8 @@ continua lá); elas não executam a tela.
   `{ fonte, nome, limite, texto }`, com `texto` pronto, por exemplo **"Diagnósticos: mostrando os 200 mais recentes."**: a tela só
   precisa mostrá-lo. Exatamente o limite não é corte. Fonte que falhou não aparece em `cortes` (ela já está em `falhas`). O MyID com as
   respostas (limite 1) não é lista cortada. A cirurgia do histórico clínico e a história atual não têm limite.
-- O diagnóstico cuja data real coincide por acaso com o dia do cadastro vai para "Sem data" (ver "A data do diagnóstico que o banco
-  preenche sozinho").
+- O diagnóstico criado **antes de 18/11/2026** cuja data real coincide por acaso com o dia do cadastro vai para "Sem data" (ver "A data
+  do diagnóstico que o banco preenche sozinho"). Depois do corte, a data (ou o vazio) é do profissional e vale.
 - "MyID concluído" só aparece com a ligação ao histórico (`avaliacoes_identidade`); sem ela, "MyID (último registro)".
 
 ## Onde está no código
@@ -432,6 +471,8 @@ continua lá); elas não executam a tela.
 - Telas: `src/components/resumoClinico/` (`ResumoClinicoVisoes`, `ResumoCompleto`, `LinhaDoTempoClinica`, `ComoComecouCard`,
   `FiltroDeMarcos`, `RegistrosDeFora`, `SeloDeOrigem`, `AvisoDeFalhas`). Lógica de exibição sem React: `exibicao.ts` (título, rótulo do
   tipo, detalhe) e `filtros.ts` (categorias e chips).
+- Escrita da data do diagnóstico (a única parte desta etapa que grava, e só pelo profissional): `src/components/medicina/DiagnosticosCID10Card.tsx`
+  (a camada pura da linha do tempo continua sem escrever nada; o corte e as funções de data ficam em `tipos.ts` e `datas.ts`).
 - Encaixe (poucas linhas): `AvaliacaoSecoesEditaveis.tsx` (o cartão do Resumo passa pelo seletor; a linha do tempo entra no fim
   da aba Clínico) e `AvaliacaoVozAtual.tsx` (sem avaliação por voz, ou com a gravação ainda aberta, a linha do tempo aparece).
 - Banco falso dos testes: `src/test/helpers/bancoFalso.ts` ganhou projeção de coluna jsonb com apelido
@@ -443,7 +484,11 @@ continua lá); elas não executam a tela.
   cirurgia, a ordem natural, a lista de registros ignorados e a chave estável da cirurgia (camada pura) estão em
   `resumoClinicoComoComecou.test.ts`. A tela nova (cartão "Como começou", título da cirurgia, chips, avisos, letra) está em
   `resumoClinicoTelaCartao.test.tsx`; a lógica de exibição e a de filtro, em `resumoClinicoExibicao.test.ts` e
-  `resumoClinicoFiltros.test.ts`; e cada ponto de escrita que invalida o cache, em `resumoClinicoInvalidacao.test.tsx`.
+  `resumoClinicoFiltros.test.ts`; e cada ponto de escrita que invalida o cache, em `resumoClinicoInvalidacao.test.tsx`. O corte de
+  18/11/2026 e as funções `criadaComADataExplicita`, `dataDoDiagnosticoPodeSerDoSistema` e `erroDaDataDigitada` estão em
+  `resumoClinicoDataExplicitaDoDiagnostico.test.ts`; o campo "Data do diagnóstico" do cartão de CID (adicionar sem data envia `null`,
+  com data envia a data, data no futuro recusada, informar/corrigir/limpar com `update` só no diagnóstico certo, erro do banco com toast
+  e sem invalidar), em `diagnosticosCID10Card.test.tsx`.
 
 ## Etapas futuras (não fazem parte desta)
 

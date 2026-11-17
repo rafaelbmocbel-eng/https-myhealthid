@@ -1,3 +1,4 @@
+import { INSTANTE_DA_DATA_EXPLICITA_DO_DIAGNOSTICO } from './tipos';
 import type { DataDoMarco } from './tipos';
 
 // Regra de data da linha do tempo: só vira data o que o registro traz como data de verdade.
@@ -82,14 +83,46 @@ function diasDoInstante(valor: unknown, hoje: string): string[] {
 }
 
 /**
- * Coluna `date DEFAULT CURRENT_DATE` que o app não envia (diagnosticos_paciente.data_diagnostico): quando o valor é o
- * dia do cadastro (created_at), em UTC ou no Brasil, não dá para provar que alguém o informou. Se created_at não for uma
- * data e hora válida, não há com o que comparar e a data não é descartada.
+ * Coluna `date DEFAULT CURRENT_DATE` que o app não enviava antes do corte (diagnosticos_paciente.data_diagnostico): quando
+ * o valor é o dia do cadastro (created_at), em UTC ou no Brasil, não dá para provar que alguém o informou. Se created_at
+ * não for uma data e hora válida, não há com o que comparar e a data não é descartada. Esta função só compara os dias; quem
+ * decide se a linha é anterior ao corte é `dataDoDiagnosticoPodeSerDoSistema`.
  */
 export function coincideComODiaDoCadastro(data: unknown, criadoEm: unknown, hoje: string): boolean {
   if (typeof data !== 'string') return false;
   const dia = data.trim();
   return SO_DATA.test(dia) && diasDoInstante(criadoEm, hoje).includes(dia);
+}
+
+const CORTE_DA_DATA_EXPLICITA = Date.parse(INSTANTE_DA_DATA_EXPLICITA_DO_DIAGNOSTICO);
+
+/**
+ * A linha foi criada a partir do instante em que o app passou a enviar data_diagnostico (data ou null): o banco não
+ * preencheu nada sozinho. Só vale com created_at válido e COM fuso (é o fuso que dá o instante exato); sem isso a linha é
+ * tratada como antiga, que é o lado cauteloso (a data coincidente fica em "Sem data").
+ */
+export function criadaComADataExplicita(criadoEm: unknown, hoje: string): boolean {
+  if (!dataDeTabela(criadoEm, hoje)) return false;
+  const texto = String(criadoEm).trim();
+  if (!DATA_E_HORA.exec(texto)?.[7]) return false;
+  return new Date(texto.replace(' ', 'T')).getTime() >= CORTE_DA_DATA_EXPLICITA;
+}
+
+/**
+ * A data do diagnóstico pode ter sido preenchida pelo banco, e não por quem cadastrou: é a do dia do cadastro e a linha é
+ * anterior ao corte. Depois do corte o valor é do profissional, mesmo igual ao dia do cadastro.
+ */
+export function dataDoDiagnosticoPodeSerDoSistema(data: unknown, criadoEm: unknown, hoje: string): boolean {
+  return !criadaComADataExplicita(criadoEm, hoje) && coincideComODiaDoCadastro(data, criadoEm, hoje);
+}
+
+/**
+ * Data digitada num campo de data ("AAAA-MM-DD"): precisa existir, ser de 1900 em diante e não ser depois de hoje, a mesma
+ * régua da linha do tempo, para o que se grava nunca cair em "data inválida" ali. Devolve a frase do erro, ou null se vale.
+ */
+export function erroDaDataDigitada(valor: string, hoje: string): string | null {
+  if (SO_DATA.test(valor) && dataDeTabela(valor, hoje)) return null;
+  return 'Data inválida: não pode ser no futuro nem antes de 1900.';
 }
 
 export const anoDaData = (data: DataDoMarco): string => data.iso.slice(0, 4);

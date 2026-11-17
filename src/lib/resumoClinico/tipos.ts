@@ -214,6 +214,13 @@ export const ROTULO_DA_FONTE: Record<ChaveDaFonte, string> = {
 export const TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM = ['principal', 'secundario'] as const;
 export const STATUS_DE_EXAME_IMPORTADO_CONCLUIDO = 'processado';
 
+// Até aqui o app não enviava data_diagnostico (a coluna é `date DEFAULT CURRENT_DATE`, 20260607211619) e o banco a preenchia
+// com o dia do cadastro. O cartão de CID passou a enviar a coluna sempre (a data escolhida ou null), então a linha criada
+// a partir deste instante tem o valor que o profissional deu, e uma data igual ao dia do cadastro é data real (diagnóstico
+// feito e registrado no mesmo dia). É a meia-noite de 18/11/2026 no Brasil; o deploy desta mudança acontece antes dela.
+// Limitação: o diagnóstico criado ANTES do corte cuja data real coincidiu por acaso com o dia do cadastro segue em "Sem data".
+export const INSTANTE_DA_DATA_EXPLICITA_DO_DIAGNOSTICO = '2026-11-18T03:00:00Z';
+
 // Apelido da coluna que traz, por caminho JSON do PostgREST, a origem do relato em avaliacoes_voz (sem baixar o
 // `resultado` inteiro, que é pesado e tem dado clínico que esta tela não usa).
 export const CAMPO_ORIGEM_DO_RELATO = 'origem_do_relato';
