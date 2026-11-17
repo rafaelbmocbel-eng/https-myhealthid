@@ -34,6 +34,9 @@ interface Props {
   onReprocessar?: (complementoTexto: string, preservarEditadas: Record<string, string>) => Promise<void>;
   /** Leva ao Avatar do paciente (aviso dos achados na linha do tempo). Fornecido por quem sabe trocar de aba. */
   onAbrirAvatar?: () => void;
+  /** Quem remonta este componente (key com savedAt) guarda a oferta de "Atualizar tratamento" e a devolve aqui, senão o aviso some. */
+  ofertaTratamentoInicial?: boolean;
+  onOfertaTratamento?: (ativa: boolean) => void;
 }
 
 type SecaoKey =
@@ -958,20 +961,26 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
   );
 }
 
-export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar, onAbrirAvatar }: Props) {
+export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar, onAbrirAvatar, ofertaTratamentoInicial, onOfertaTratamento }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Aviso "a avaliação mudou — atualizar o tratamento?" após editar uma seção.
-  const [mostrarAtualizarTratamento, setMostrarAtualizarTratamento] = useState(false);
+  const [mostrarAtualizarTratamento, setMostrarAtualizarTratamentoLocal] = useState(!!ofertaTratamentoInicial);
+  const setMostrarAtualizarTratamento = (ativa: boolean) => {
+    setMostrarAtualizarTratamentoLocal(ativa);
+    onOfertaTratamento?.(ativa);
+  };
   const [reprocessandoAbas, setReprocessandoAbas] = useState(false);
   const bannerTratamentoRef = useRef<HTMLDivElement>(null);
+  // Aviso herdado de antes da remontagem: o profissional já o viu, não rola a tela de novo.
+  const ofertaHerdadaRef = useRef(!!ofertaTratamentoInicial);
   // O aviso fica no topo; sem isso quem edita lá embaixo nunca o vê.
   useEffect(() => {
-    if (mostrarAtualizarTratamento) {
-      bannerTratamentoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    if (!mostrarAtualizarTratamento) return;
+    if (ofertaHerdadaRef.current) { ofertaHerdadaRef.current = false; return; }
+    bannerTratamentoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [mostrarAtualizarTratamento]);
 
   const meta = resultado?._secoes || {};

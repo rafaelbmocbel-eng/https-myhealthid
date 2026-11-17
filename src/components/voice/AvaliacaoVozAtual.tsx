@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from '@/lib/dateSafe';
 import { ptBR } from 'date-fns/locale';
@@ -33,6 +33,9 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
   const [addOpen, setAddOpen] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  // Avaliação para a qual o aviso "Atualizar tratamento" está oferecido. Fica aqui, e não nas seções, porque elas
+  // remontam toda vez que o plano é refeito (key com savedAt) e levariam o aviso junto.
+  const [ofertaTratamentoDe, setOfertaTratamentoDe] = useState<string | null>(null);
 
   const { data: latest, isLoading } = useQuery({
     queryKey: ['avaliacao-voz-latest', pacienteId, user?.id],
@@ -51,6 +54,9 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     },
     enabled: !!user && !!pacienteId,
   });
+
+  // Outra avaliação na tela (ou a mesma de volta depois de excluir a mais nova) não herda o aviso da anterior.
+  useEffect(() => { setOfertaTratamentoDe(null); }, [latest?.id]);
 
   const handleComplementar = async (
     capturedText: string,
@@ -210,6 +216,8 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           transcricao={(latest as any).transcricao}
           onReprocessar={reprocessarComEdicao}
           onAbrirAvatar={onAbrirAvatar}
+          ofertaTratamentoInicial={ofertaTratamentoDe === latest.id}
+          onOfertaTratamento={(ativa) => setOfertaTratamentoDe(ativa ? latest.id : null)}
         />
       ) : (
         <VoiceAssessment

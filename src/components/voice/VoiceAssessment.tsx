@@ -61,7 +61,7 @@ interface VoiceAssessmentProps {
   /** Optional clinical context (e.g. pain map from 3D avatar) prepended to the transcript */
   contextPrefix?: string;
   /** When provided, the transcript is also sent to the pain-extraction AI and findings are returned. */
-  onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void;
+  onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void | Promise<void>;
   /** Region catalog used by the pain extractor (id+label list). Required if onPainExtracted is set. */
   painRegionsCatalog?: { regions: Array<{ id: string; label: string }>; catalog?: Record<string, { categories: Record<string, string[]> }> };
   /** Current pain map from the body avatar — persisted with the assessment so it survives reloads */
@@ -871,6 +871,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
         queryClient.invalidateQueries({ queryKey: ['alerta-relato-paciente', pacienteId] });
         invalidarFontesClinicas(queryClient, pacienteId);
+        queryClient.invalidateQueries({ queryKey: ['research-data'] });
       }
       onAssessmentComplete?.(assessmentToSave);
 
@@ -1149,7 +1150,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             autoPainMap = map;
             painFindings = painData.findings;
             setExtractedPainMap(map);
-            if (onPainExtracted) onPainExtracted(painData.findings);
+            // Espera o chamador gravar as regiões: logo abaixo o auto-avatar lê o que já está gravado para não repetir a mesma região.
+            if (onPainExtracted) await onPainExtracted(painData.findings);
             toast({
               title: '🎯 Avatar atualizado pela IA',
               description: `${painData.findings.length} região(ões) marcada(s) automaticamente.`,

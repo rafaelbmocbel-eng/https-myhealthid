@@ -511,7 +511,36 @@ que só a do paciente certo fica velha, e que uma gravação recusada pelo banco
 `DinamometriaInicio`) e o `PacienteDashboardIdentidade` têm só uma **guarda estática** (o teste lê o arquivo e confere que a chamada
 continua lá); elas não executam a tela.
 
+## Reavaliação: dados epidemiológicos, aviso do tratamento e achados repetidos
+
+Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemiologicosInvalidacao.test.tsx`,
+`atualizarTratamentoSobrevive.test.tsx` e `avatarAchadosDuplicidade.test.tsx`):
+
+- **Dados epidemiológicos da Home** (`ResearchDashboard`, consulta `['research-data', usuário]`, 30 s de `staleTime`): criar, refazer e
+  excluir uma avaliação por voz agora invalidam o **prefixo** `['research-data']` (quem grava não conhece a chave do usuário; num navegador
+  só existe a consulta de quem está logado). Pontos: `VoiceAssessment.tsx` (ao gravar, junto das outras invalidações do paciente),
+  `AvaliacoesVozHistorico.tsx` (excluir) e `invalidarCachesAvaliacaoVoz` (excluir a atual, refazer o plano, complemento, condutas).
+  O `ResumoConsultaPresencial` (nova avaliação do perfil) não precisa de chamada própria: usa o mesmo `VoiceAssessment`. Banco ou IA
+  recusando não invalida. Editar só o texto de uma seção não invalida (contagem e severidade não mudam).
+- **Aviso "A avaliação mudou" (Atualizar abas / Atualizar tratamento)**: sumia quando o plano era refeito com sucesso, porque o
+  `AvaliacaoVozAtual` remonta as seções a cada `_meta.savedAt` novo (a `key` é o que faz elas relerem o resultado refeito, por isso
+  fica) e o estado do aviso morava dentro delas. A oferta agora fica no `AvaliacaoVozAtual` (`ofertaTratamentoDe`, o id da avaliação) e
+  volta às seções por `ofertaTratamentoInicial` / `onOfertaTratamento`. Sai só quando o profissional aplica ao plano ou dispensa, ou
+  quando outra avaliação aparece na tela. O aviso que volta depois de remontar não rola a tela de novo.
+- **Achado repetido no Avatar**: na nova avaliação pelo `ResumoConsultaPresencial`, `handlePainExtracted` (regiões de dor da IA) e o
+  auto-avatar do `VoiceAssessment` (palavras-chave) gravavam a mesma região (ex.: `joelho_d`) duas vezes, pois o auto-avatar lia as
+  regiões ativas antes de a primeira gravação terminar (a tabela não tem `UNIQUE`). O `VoiceAssessment` agora espera o `onPainExtracted`
+  terminar antes de ler. O que o Avatar mostra e a revisão pelo profissional não mudaram.
+
 ## Limites conhecidos
+
+- **Aviso "Atualizar tratamento" ao trocar de sub-aba**: a oferta de atualizar a diretriz fica no `AvaliacaoVozAtual`, que sobrevive ao
+  refazer do plano, mas desmonta quando o profissional troca de sub-aba do perfil (por exemplo vai para Diretrizes e volta). Aí ela
+  some sem ele ter aplicado nem dispensado. Também se perdem a sugestão já gerada e o diálogo de revisão se o plano terminar de ser
+  refeito com eles abertos (o banner mora dentro das seções, que remontam). Não é regressão: antes sumia em mais casos.
+- **Achados do Avatar da mesma região**: depois de passar a esperar a gravação do mapa de dor (`await onPainExtracted`), a região que a
+  IA da dor e a palavra-chave acham juntas entra **uma vez**, com o achado do mapa de dor (severidade 1, pendente de revisão). A cópia
+  da palavra-chave (severidade da EVA e hipóteses na metadata) deixa de ser gravada nessa região; nada na tela lê esses campos.
 
 - **Atestado (`DocumentosModal.tsx`)**: o CID que o modal sugere ao abrir passou a ser o último **cadastrado** (`created_at`), não o de
   data de diagnóstico mais recente. A data virou opcional e um CID novo sem data iria para o fim da fila. Um teste

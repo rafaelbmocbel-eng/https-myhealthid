@@ -164,9 +164,10 @@ export async function reprocessarComplemento(
   return { assessment: cleanResult, transcricaoFinal, painFindingsCount: painFindings.length };
 }
 
-/** Invalida todas as caches que dependem de uma avaliação por voz/texto — avaliação, timeline, insights e avatar clínico. */
+/** Invalida todas as caches que dependem de uma avaliação por voz/texto — avaliação, timeline, insights, avatar clínico e dados epidemiológicos da Home. */
 export function invalidarCachesAvaliacaoVoz(qc: QueryClient, pacienteId: string) {
   qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest'] });
+  qc.invalidateQueries({ queryKey: ['research-data'] });
   qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest-presencial'] });
   qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
   qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
