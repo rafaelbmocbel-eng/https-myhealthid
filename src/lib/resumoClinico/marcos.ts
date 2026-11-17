@@ -7,13 +7,13 @@ import {
 import type { CirurgiaLida } from './leitura';
 import {
   CAMPO_ORIGEM_DO_RELATO, DETALHE_DATA_LIDA_DO_DOCUMENTO, DETALHE_MYID_CONCLUIDO, DETALHE_MYID_ULTIMO_REGISTRO,
-  MOTIVO_DATA_NAO_VALIDA, ROTULO_CIRURGIA_DO_CLIENTE, ROTULO_FAIXA_MYID, ROTULO_INICIO_HISTORIA_ATUAL, ROTULO_O_QUE_FAZIA_MYID,
-  ROTULO_QUANDO_MYID, ROTULO_QUEIXA_HISTORIA_ATUAL, ROTULO_QUEIXA_MYID, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO,
+  FONTES_COM_DESTINO, MOTIVO_DATA_NAO_VALIDA, ROTULO_CIRURGIA_DO_CLIENTE, ROTULO_FAIXA_MYID, ROTULO_INICIO_HISTORIA_ATUAL,
+  ROTULO_O_QUE_FAZIA_MYID, ROTULO_QUANDO_MYID, ROTULO_QUEIXA_HISTORIA_ATUAL, ROTULO_QUEIXA_MYID, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO,
   TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM, TITULO_MYID_CONCLUIDO, TITULO_MYID_ULTIMO_REGISTRO,
 } from './tipos';
 import type {
-  ComoComecou, FonteDoMarco, FontesClinicas, GrupoPorAno, ItemSemData, LinhaBruta, LinhaDoTempo, Marco,
-  OrigemDoDado, RegistroIgnorado, RelatoDoCliente, TipoDoMarco,
+  ComoComecou, DestinoDoRegistro, FonteComDestino, FonteDoMarco, FontesClinicas, GrupoPorAno, ItemSemData, LinhaBruta,
+  LinhaDoTempo, Marco, OrigemDoDado, RegistroIgnorado, RelatoDoCliente, TipoDoMarco,
 } from './tipos';
 
 // Nada é inventado: cada marco tem a data que o próprio registro traz. Texto livre do cliente ("há 2 anos") nunca vira
@@ -29,6 +29,7 @@ const NOTA_SEM_DATA_DO_EXAME = 'A data do exame não foi informada';
 const NOTA_DATA_INVALIDA_DO_EXAME = 'A data do exame registrada não é válida';
 
 const tiposDeDiagnosticoQueEntram: readonly string[] = TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM;
+const fontesComDestino: readonly string[] = FONTES_COM_DESTINO;
 const origensDoPaciente: readonly string[] = ORIGENS_PACIENTE;
 
 const ROTULO_DO_TIPO_DE_VIDA: Record<string, string> = {
@@ -45,6 +46,25 @@ const NOME_DA_ESCALA: Record<string, string> = {
 const tem = (o: Record<string, unknown>, chave: string) => Object.prototype.hasOwnProperty.call(o, chave);
 
 const idDaLinha = (fonte: string, linha: LinhaBruta, posicao: number) => `${fonte}:${textoLimpo(linha.id) || `i${posicao}`}`;
+
+const temOndeAbrir = (fonte: FonteDoMarco): fonte is FonteComDestino => fontesComDestino.includes(fonte);
+
+/**
+ * Onde abrir o registro de origem de um marco: a fonte e o id da PRÓPRIA linha do banco. Só as fontes de FONTES_COM_DESTINO
+ * têm onde abrir. Linha sem id (a chave do marco cai na posição, "i0") não tem destino: não dá para achar na tela uma linha
+ * que não se sabe qual é.
+ */
+export function destinoDoRegistro(fonte: FonteDoMarco, linha: LinhaBruta): DestinoDoRegistro | undefined {
+  if (!temOndeAbrir(fonte)) return undefined;
+  const id = textoLimpo(linha.id);
+  return id ? { fonte, id } : undefined;
+}
+
+// Os dois campos do destino vão juntos, ou nenhum: o botão não existe sem o texto que o leitor de tela lê.
+const comDestino = (fonte: FonteDoMarco, linha: LinhaBruta, rotulo: string): Pick<Marco, 'destino' | 'rotuloDoDestino'> => {
+  const destino = destinoDoRegistro(fonte, linha);
+  return destino ? { destino, rotuloDoDestino: rotulo } : {};
+};
 
 // Diagnóstico só é fato clínico se está ativo (remover no app é ativo=false) e é principal ou secundário. "suspeita" é
 // hipótese. `ativo` vazio fica de fora como na lista do próprio app (.eq('ativo', true)): a coluna é NOT NULL, então
@@ -255,6 +275,7 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
       id, data, titulo: 'Avaliação presencial registrada',
       detalhe: queixa ? `Queixa principal: ${queixa}` : undefined,
       tipo: 'avaliacao', rotuloTipo: 'Avaliação presencial', fonte: 'avaliacao_voz', natureza: 'registro',
+      ...comDestino('avaliacao_voz', linha, `a avaliação de ${formatarData(data)}`),
     });
   });
 
@@ -286,7 +307,11 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
     // cadastro não conta como data do fato. Linha depois do corte: o valor (data ou null) é do profissional e vale.
     const doCadastro = dataDoDiagnosticoPodeSerDoSistema(linha.data_diagnostico, linha.created_at, hoje);
     if (data && !doCadastro) {
-      doProfissional({ id, data, titulo, tipo: 'diagnostico', rotuloTipo: 'Diagnóstico', fonte: 'diagnostico', natureza: 'fato' });
+      const nomeDoCid = cid || textoLimpo(linha.cid_descricao);
+      doProfissional({
+        id, data, titulo, tipo: 'diagnostico', rotuloTipo: 'Diagnóstico', fonte: 'diagnostico', natureza: 'fato',
+        ...comDestino('diagnostico', linha, `o diagnóstico${nomeDoCid ? ` ${nomeDoCid}` : ''}`),
+      });
       return;
     }
     let aviso = NOTA_SEM_DATA_DO_DIAGNOSTICO;

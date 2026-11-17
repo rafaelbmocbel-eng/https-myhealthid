@@ -17,6 +17,7 @@ import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAss
 import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import AlertaRelatoDoPaciente from './AlertaRelatoDoPaciente';
 import LinhaDoTempoClinica from '@/components/resumoClinico/LinhaDoTempoClinica';
+import type { DestinoDoRegistro } from '@/lib/resumoClinico/tipos';
 
 interface Props {
   pacienteId: string;
@@ -24,9 +25,13 @@ interface Props {
   serviceType?: 'identidade' | 'cobzero' | 'studio';
   /** Leva ao Avatar do paciente; só vem quando o Avatar existe na visão do perfil. */
   onAbrirAvatar?: () => void;
+  /** Abre na tela o registro de origem de um marco da linha do tempo (rola e destaca). Fornecido por quem monta a página. */
+  onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
+  /** A página diz se um destino tem onde abrir na visão atual (por exemplo, a lente esconde o cartão de CID). */
+  registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
 }
 
-export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade', onAbrirAvatar }: Props) {
+export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade', onAbrirAvatar, onAbrirRegistro, registroAbrivel }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -57,6 +62,13 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
 
   // Outra avaliação na tela (ou a mesma de volta depois de excluir a mais nova) não herda o aviso da anterior.
   useEffect(() => { setOfertaTratamentoDe(null); }, [latest?.id]);
+
+  // Esta aba só mostra a última avaliação: as antigas ficam no histórico da aba Evolução, que não está montado aqui, então o
+  // marco de uma avaliação antiga não ganha o botão. O resto (o cartão de CID) quem sabe é a página.
+  const registroAbrivelAqui = (destino: DestinoDoRegistro) => {
+    if (destino.fonte === 'avaliacao_voz' && destino.id !== latest?.id) return false;
+    return registroAbrivel?.(destino) ?? true;
+  };
 
   const handleComplementar = async (
     capturedText: string,
@@ -151,7 +163,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     return (
       <div className="space-y-4">
         <AlertaRelatoDoPaciente pacienteId={pacienteId} />
-        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} />
+        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivelAqui} />
       </div>
     );
   }
@@ -162,7 +174,10 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
   return (
     <section className="space-y-4">
       <AlertaRelatoDoPaciente pacienteId={pacienteId} />
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div
+        data-avaliacao-id={latest.id}
+        className="flex scroll-mt-20 items-center justify-between gap-2 flex-wrap rounded-lg motion-safe:transition-shadow data-[destacado=true]:outline data-[destacado=true]:outline-2 data-[destacado=true]:outline-offset-4 data-[destacado=true]:outline-primary"
+      >
         <div className="flex items-center gap-2 text-caption text-muted-foreground">
           <FileText className="icon-xs" />
           <span>
@@ -216,6 +231,8 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           transcricao={(latest as any).transcricao}
           onReprocessar={reprocessarComEdicao}
           onAbrirAvatar={onAbrirAvatar}
+          onAbrirRegistro={onAbrirRegistro}
+          registroAbrivel={registroAbrivelAqui}
           ofertaTratamentoInicial={ofertaTratamentoDe === latest.id}
           onOfertaTratamento={(ativa) => setOfertaTratamentoDe(ativa ? latest.id : null)}
         />
@@ -230,7 +247,9 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
         />
       )}
 
-      {!hasResult && <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} />}
+      {!hasResult && (
+        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivelAqui} />
+      )}
 
       {/* Dialog: complementar avaliação existente com voz/áudio/texto */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

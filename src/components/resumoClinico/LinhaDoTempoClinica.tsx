@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, History, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, History, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { hojeLocalISO } from '@/lib/dataLocal';
 import { useAchadosParaRevisao, useFontesClinicas } from '@/hooks/useFontesClinicas';
 import { formatarData } from '@/lib/resumoClinico/datas';
-import { detalheParaExibir, rotuloDoTipoParaExibir } from '@/lib/resumoClinico/exibicao';
+import { detalheParaExibir, rotuloDoTipoParaExibir, textoDoBotaoAbrir } from '@/lib/resumoClinico/exibicao';
 import { deveMostrarFiltros, filtrarMarcos, opcoesDeFiltro } from '@/lib/resumoClinico/filtros';
 import type { IdDoFiltro } from '@/lib/resumoClinico/filtros';
 import { agruparPorAno, montarLinhaDoTempo, tituloParaExibir } from '@/lib/resumoClinico/marcos';
 import { FONTES_VAZIAS, ROTULO_DOS_ACHADOS_DO_HISTORICO, ROTULO_REGISTRO_NO_APP } from '@/lib/resumoClinico/tipos';
-import type { Marco } from '@/lib/resumoClinico/tipos';
+import type { DestinoDoRegistro, Marco } from '@/lib/resumoClinico/tipos';
 import AvisoDeFalhas from './AvisoDeFalhas';
 import AvisoDosAchadosDoHistorico from './AvisoDosAchadosDoHistorico';
 import ComoComecouCard from './ComoComecouCard';
@@ -19,8 +19,17 @@ import SeloDeOrigem from './SeloDeOrigem';
 
 const MARCOS_VISIVEIS = 6;
 
-function ItemDoMarco({ marco }: { marco: Marco }) {
+interface PropsDoItem {
+  marco: Marco;
+  onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
+  registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
+}
+
+function ItemDoMarco({ marco, onAbrirRegistro, registroAbrivel }: PropsDoItem) {
   const registro = marco.natureza === 'registro';
+  const destino = marco.destino;
+  const nomeDoBotao = textoDoBotaoAbrir(marco);
+  const abrivel = !!destino && (registroAbrivel?.(destino) ?? true);
   const linhaDaData = [formatarData(marco.data), rotuloDoTipoParaExibir(marco), registro ? ROTULO_REGISTRO_NO_APP : null]
     .filter(Boolean)
     .join(' · ');
@@ -42,6 +51,17 @@ function ItemDoMarco({ marco }: { marco: Marco }) {
         <p className="text-xs text-muted-foreground">{linhaDaData}</p>
         {marco.detalhe && <p className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground/75">{marco.detalhe}</p>}
         <SeloDeOrigem origem={marco.origem} />
+        {onAbrirRegistro && destino && nomeDoBotao && abrivel && (
+          <button
+            type="button"
+            aria-label={nomeDoBotao}
+            onClick={() => onAbrirRegistro(destino)}
+            className="mt-1 inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-background px-3 text-sm font-medium text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Abrir
+            <ArrowRight className="icon-xs shrink-0" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </li>
   );
@@ -52,10 +72,16 @@ interface Props {
   // Leva o profissional ao Avatar do mesmo paciente (o dono da aba é quem sabe trocar de aba). Sem ela, o aviso dos achados
   // aparece sem o botão.
   onAbrirAvatar?: () => void;
+  // Leva ao registro de origem de um marco (a avaliação ou o diagnóstico); a página é quem sabe rolar até ele. Sem ela, nenhum
+  // marco ganha o botão "Abrir": nunca um botão que não leva a lugar nenhum.
+  onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
+  // Diz se aquele destino tem onde abrir nesta tela (a lente pode esconder o cartão de CID; uma avaliação antiga não está na
+  // aba). Sem ela, todo marco com destino ganha o botão.
+  registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
 }
 
 // Só LEITURA e calculada na hora: não grava nada e não entra no prontuário. O filtro e o "Ver todos" só mudam o que aparece.
-export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar }: Props) {
+export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrirRegistro, registroAbrivel }: Props) {
   const { data, isLoading, isError } = useFontesClinicas(pacienteId);
   // Leitura à parte: a linha do tempo não espera pela contagem dos achados nem cai se ela falhar.
   const achados = useAchadosParaRevisao(pacienteId);
@@ -146,7 +172,9 @@ export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar }: Props
           <div key={g.ano} className="space-y-2">
             <h4 className="text-sm font-semibold tabular-nums text-foreground/80">{g.ano}</h4>
             <ol className="ml-1.5 space-y-3 border-l-2 border-border/60 pl-4">
-              {g.marcos.map((m) => <ItemDoMarco key={m.id} marco={m} />)}
+              {g.marcos.map((m) => (
+                <ItemDoMarco key={m.id} marco={m} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivel} />
+              ))}
             </ol>
           </div>
         ))}

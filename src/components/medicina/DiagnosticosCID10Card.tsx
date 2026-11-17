@@ -170,7 +170,7 @@ export default function DiagnosticosCID10Card({ pacienteId }: Props) {
   });
 
   return (
-    <Card className="rounded-xl border-border/40 shadow-xs">
+    <Card data-cartao-diagnosticos="true" className="scroll-mt-20 rounded-xl border-border/40 shadow-xs">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <Stethoscope className="icon-sm text-primary" />
@@ -282,7 +282,11 @@ export default function DiagnosticosCID10Card({ pacienteId }: Props) {
           const pegouDoSistema = dataDoDiagnosticoPodeSerDoSistema(d.data_diagnostico, d.created_at, hoje);
           const emEdicao = editandoId === d.id;
           return (
-            <div key={d.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/40">
+            <div
+              key={d.id}
+              data-diagnostico-id={d.id}
+              className="flex scroll-mt-24 items-start gap-3 p-3 rounded-lg border border-border/40 motion-safe:transition-colors data-[destacado=true]:border-primary data-[destacado=true]:bg-primary/10 data-[destacado=true]:ring-2 data-[destacado=true]:ring-primary/40"
+            >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{d.cid_codigo}</span>

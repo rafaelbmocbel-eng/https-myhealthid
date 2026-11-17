@@ -39,3 +39,12 @@ export function textoDoAvisoDosAchados(total: number, contagemIncompleta = false
   const achados = `${total} ${total === 1 ? 'achado' : 'achados'} do histórico aguardando a sua revisão`;
   return contagemIncompleta ? `Pelo menos ${achados}` : achados;
 }
+
+/**
+ * Nome do botão "Abrir" de um marco para o leitor de tela ("Abrir a avaliação de 06/10/2026", "Abrir o diagnóstico M54.5"),
+ * ou nulo quando o marco não tem onde abrir.
+ */
+export function textoDoBotaoAbrir(marco: Marco): string | null {
+  if (!marco.destino || !marco.rotuloDoDestino) return null;
+  return `Abrir ${marco.rotuloDoDestino}`;
+}

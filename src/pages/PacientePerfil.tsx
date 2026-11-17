@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
 import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 import { visaoGeralMostraOAvatar } from '@/lib/avatar/irParaOAvatar';
+import { useAbrirRegistroClinico } from '@/hooks/useAbrirRegistroClinico';
+import type { DestinoDoRegistro } from '@/lib/resumoClinico/tipos';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
@@ -151,6 +153,14 @@ export default function PacientePerfil() {
       tabsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, [id, navigate]);
+  // Botão "Abrir" dos marcos da linha do tempo (avaliação e diagnóstico): rola até o registro e o destaca, sem trocar de rota.
+  // O cartão de CID só existe na aba Avaliação quando a lente do profissional o mostra; sem ele o marco fica sem o botão.
+  const abrirRegistro = useAbrirRegistroClinico();
+  const mostraOCartaoDeCid = temBloco(lenteAtiva, 'cid');
+  const registroAbrivel = useCallback(
+    (destino: DestinoDoRegistro) => destino.fonte !== 'diagnostico' || mostraOCartaoDeCid,
+    [mostraOCartaoDeCid],
+  );
   // Sincroniza a aba ativa quando a URL muda (ex.: navigate após confirmar diretriz)
   useEffect(() => {
     setActiveTab(initialTab);
@@ -1172,6 +1182,8 @@ export default function PacientePerfil() {
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
               onAbrirAvatar={visaoGeralMostraOAvatar(layoutCfg.sub_tabs) ? irParaOAvatar : undefined}
+              onAbrirRegistro={abrirRegistro}
+              registroAbrivel={registroAbrivel}
             />
             {id && <CheckinSemanalCard pacienteId={id} variante="avaliacao" />}
             <ResumoConsultaPresencial

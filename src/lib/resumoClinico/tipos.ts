@@ -42,6 +42,18 @@ export const TIPOS_DE_MARCO = [
 
 export type TipoDoMarco = (typeof TIPOS_DE_MARCO)[number];
 
+// Só estas duas fontes têm uma tela onde o registro de origem se abre (o cartão de CID e a última avaliação). As outras não
+// ganham destino: um botão sem lugar para ir não existe.
+export const FONTES_COM_DESTINO = ['avaliacao_voz', 'diagnostico'] as const;
+
+export type FonteComDestino = (typeof FONTES_COM_DESTINO)[number];
+
+// Onde está o registro de origem de um marco: a fonte e o id da própria linha do banco, nada inventado.
+export interface DestinoDoRegistro {
+  fonte: FonteComDestino;
+  id: string;
+}
+
 export interface Marco {
   // Estável entre leituras: fonte + id da origem (+ posição, nos itens de uma lista do cliente).
   id: string;
@@ -56,6 +68,11 @@ export interface Marco {
   // O que veio do cliente nunca foi revisado por um profissional.
   revisado: boolean;
   natureza: NaturezaDoMarco;
+  // Só nos marcos cuja fonte tem onde abrir (FONTES_COM_DESTINO) e cuja linha trouxe um id de verdade.
+  destino?: DestinoDoRegistro;
+  // Como o botão "Abrir" chama o registro para o leitor de tela ("a avaliação de 06/10/2026", "o diagnóstico M54.5"). Vem
+  // junto com `destino` e nunca sozinho.
+  rotuloDoDestino?: string;
 }
 
 // Item sem data de verdade: o cliente escreveu quando foi mas não deu uma data que dê para confiar ("há 2 anos",

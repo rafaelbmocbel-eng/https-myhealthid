@@ -350,6 +350,41 @@ confere se o layout do profissional deixa a sub-aba "Corpo" visível; sem ela, o
 `useLenteAtiva`, **não** esconde o Avatar na Visão Geral: quem decide é o layout.) Ele leva ao Avatar, **não** até a fila de revisão, que
 fica no fim do cartão do Avatar.
 
+### Abrir o registro de origem (botão "Abrir" nos marcos)
+
+Decisão do Rafael: tocar num marco leva ao registro de origem, **começando só pelos dois que têm onde abrir**. Os outros marcos ficam
+como estão, sem botão.
+
+| Marco | Destino (`marco.destino`) | O que a página faz ao tocar |
+| --- | --- | --- |
+| "Avaliação presencial registrada" (`avaliacao_voz`) | fonte + id da avaliação | Se é a **última** avaliação (a do cartão "Última avaliação"), rola até esse cartão e o destaca. Avaliação mais antiga: **sem botão** (ver abaixo). |
+| Diagnóstico (`diagnostico`) | fonte + id do diagnóstico | Rola até o cartão de CID (`DiagnosticosCID10Card`) e destaca a linha **daquele** diagnóstico. |
+
+- **O destino é derivado, nunca inventado**: `{ fonte, id }` com o id da **própria linha do banco** (`destinoDoRegistro`, em `marcos.ts`),
+  guardado no próprio `Marco` (`destino`, mais `rotuloDoDestino`, o texto que o leitor de tela lê). Linha **sem id de verdade** (a chave do
+  marco cai na posição, `avaliacao_voz:i0`) não tem destino. Nenhuma outra fonte ganha destino (`FONTES_COM_DESTINO`), nem o item de
+  "Sem data" (um diagnóstico sem a data do fato fica sem botão), nem o cartão "Como começou".
+- **O botão**: "Abrir" (alvo de 44 px, foco visível, sem `truncate` nem `line-clamp`, só cores do tema, serve no escuro), com o nome
+  acessível "Abrir a avaliação de 06/10/2026" ou "Abrir o diagnóstico M54.5" (o dia é o do Brasil; sem o código do CID, vale o nome do CID).
+- **Quem decide se há botão** (a linha do tempo não navega nem sabe de abas): ela recebe duas funções por prop, pelos mesmos caminhos do
+  `onAbrirAvatar` (`PacientePerfil` > `AvaliacaoVozAtual` > `AvaliacaoSecoesEditaveis` > `LinhaDoTempoClinica`): `onAbrirRegistro(destino)` e
+  `registroAbrivel(destino)`. O botão só existe quando há `onAbrirRegistro` **e** o marco tem destino **e** `registroAbrivel` (se vier) diz que sim.
+  `PacientePerfil` responde pela lente; `AvaliacaoVozAtual` responde pela avaliação, porque só ele sabe qual é a última.
+- **Quando o botão não aparece, e por quê**:
+  - **Lente sem o bloco `cid`** (`temBloco(lente, 'cid')`): o cartão de CID não existe na aba, então o diagnóstico fica na linha do tempo, sem botão.
+  - **Avaliação antiga**: quem abre uma avaliação antiga é o `AvaliacoesVozHistorico` (`setOpened`), que só é montado na aba **Evolução**, dentro de um
+    bloco recolhido; a linha do tempo mora na aba **Avaliação**, onde ele **não** existe. Abrir uma avaliação antiga exigiria trocar de aba, abrir o bloco e abrir a
+    janela de edição (que **edita**). Isso não foi pedido, então o marco continua na linha do tempo, sem botão (nunca um botão que não leva a lugar nenhum).
+  - Sem a função da página, todos os marcos ficam sem botão. Sem avaliação do profissional, só o diagnóstico tem botão.
+- **Como abre** (`src/hooks/useAbrirRegistroClinico.ts`): acha o elemento por uma marca que o próprio cartão escreve (`data-diagnostico-id` na linha do
+  cartão de CID; `data-avaliacao-id` no topo do cartão "Última avaliação"), rola até ele (suave; **direta** com `prefers-reduced-motion`) e põe
+  `data-destacado="true"` por 3 s. O destaque é só CSS pelo atributo (anel e fundo leve; transição só com `motion-safe`), sem estado nem dado de cartão.
+  Só um destaque por vez; abrir outro, ou sair da tela, apaga o anterior. Se a linha do diagnóstico ainda não está na lista, vai ao cartão sem destacar nada.
+  O foco do teclado e do leitor de tela vai para o registro aberto (`tabindex="-1"` posto por código, só se o elemento ainda não tiver um, e `focus({ preventScroll: true })`, para não rolar de novo).
+- **O que não faz**: não abre janela (`window.open`), não muda de rota nem de aba, não grava nada e não muda o que as telas mostram além do destaque temporário.
+  O teste de privacidade continua valendo e **não foi mexido**: a navegação entra na linha do tempo só por função recebida por prop; o hook que mexe na tela fica fora da camada
+  pura e dos componentes da linha do tempo.
+
 ## Selos de origem
 
 - O que veio do **cliente** leva **"Relatado pelo cliente, não revisado"**; o que o **profissional** registrou leva **"Registrado
@@ -581,6 +616,9 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
   (a camada pura da linha do tempo continua sem escrever nada; o corte e as funções de data ficam em `tipos.ts` e `datas.ts`).
 - Botão "Abrir o Avatar" (só passa uma função e um pedido): `PacientePerfil.tsx`, `AvaliacaoVozAtual.tsx`, `AvaliacaoSecoesEditaveis.tsx`,
   `PacienteDashboardIdentidade.tsx` e `PatientIntegratedDashboard.tsx`.
+- Botão "Abrir" dos marcos (avaliação e diagnóstico): destino em `src/lib/resumoClinico/marcos.ts` (`destinoDoRegistro`) e `tipos.ts`; texto do botão em `exibicao.ts`
+  (`textoDoBotaoAbrir`); rolar e destacar em `src/hooks/useAbrirRegistroClinico.ts`; funções passadas por `PacientePerfil.tsx`, `AvaliacaoVozAtual.tsx` e
+  `AvaliacaoSecoesEditaveis.tsx`; marcas `data-diagnostico-id` / `data-cartao-diagnosticos` em `DiagnosticosCID10Card.tsx` e `data-avaliacao-id` em `AvaliacaoVozAtual.tsx`.
 - Encaixe (poucas linhas): `AvaliacaoSecoesEditaveis.tsx` (o cartão do Resumo passa pelo seletor; a linha do tempo entra no fim
   da aba Clínico) e `AvaliacaoVozAtual.tsx` (sem avaliação por voz, ou com a gravação ainda aberta, a linha do tempo aparece).
 - Banco falso dos testes: `src/test/helpers/bancoFalso.ts` ganhou projeção de coluna jsonb com apelido
@@ -603,7 +641,12 @@ Os testes do aviso dos achados: a regra da fila (matriz de casos, comparação c
 (colunas, paciente e profissional, nunca data, limite + 1, falha isolada, cache) em `achadosParaRevisaoLeitura.test.tsx`; a tela (singular e
 plural, botão, sem a função, contagem 0, leitura em andamento, falha, marcos e "Sem data" iguais, 44 px) em `resumoClinicoAchadosTela.test.tsx`;
 o caminho até o Avatar em `perfilAbrirOAvatar.test.tsx` (a página do perfil de verdade), `visaoGeralAbreNoAvatar.test.tsx` e
-`avatarIrParaOAvatar.test.ts`. O teste de privacidade (`resumoClinicoPrivacidade.test.ts`) não mudou e continua valendo para todos os arquivos
+`avatarIrParaOAvatar.test.ts`.
+
+Os testes do botão "Abrir": o destino de cada tipo de marco (só dois têm), em `resumoClinicoDestino.test.ts`; o botão na tela (só com a função e o destino, texto acessível,
+44 px, nenhum botão nos outros marcos, em "Sem data" nem em "Como começou", e as três formas da aba Avaliação), em `resumoClinicoAbrirRegistroTela.test.tsx`; rolar, destacar e
+apagar o destaque, em `abrirRegistroClinicoHook.test.tsx`; e a página do perfil de verdade (clicar abre e destaca o registro certo, o destaque some, a lente sem `cid` tira o
+botão do diagnóstico, avaliação antiga sem botão), em `perfilAbrirRegistro.test.tsx`. O teste de privacidade (`resumoClinicoPrivacidade.test.ts`) não mudou e continua valendo para todos os arquivos
 da linha do tempo, inclusive o aviso novo.
 
 ## Etapas futuras (não fazem parte desta)
