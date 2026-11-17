@@ -2,15 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, History, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { hojeLocalISO } from '@/lib/dataLocal';
-import { useFontesClinicas } from '@/hooks/useFontesClinicas';
+import { useAchadosParaRevisao, useFontesClinicas } from '@/hooks/useFontesClinicas';
 import { formatarData } from '@/lib/resumoClinico/datas';
 import { detalheParaExibir, rotuloDoTipoParaExibir } from '@/lib/resumoClinico/exibicao';
 import { deveMostrarFiltros, filtrarMarcos, opcoesDeFiltro } from '@/lib/resumoClinico/filtros';
 import type { IdDoFiltro } from '@/lib/resumoClinico/filtros';
 import { agruparPorAno, montarLinhaDoTempo, tituloParaExibir } from '@/lib/resumoClinico/marcos';
-import { FONTES_VAZIAS, ROTULO_REGISTRO_NO_APP } from '@/lib/resumoClinico/tipos';
+import { FONTES_VAZIAS, ROTULO_DOS_ACHADOS_DO_HISTORICO, ROTULO_REGISTRO_NO_APP } from '@/lib/resumoClinico/tipos';
 import type { Marco } from '@/lib/resumoClinico/tipos';
 import AvisoDeFalhas from './AvisoDeFalhas';
+import AvisoDosAchadosDoHistorico from './AvisoDosAchadosDoHistorico';
 import ComoComecouCard from './ComoComecouCard';
 import FiltroDeMarcos from './FiltroDeMarcos';
 import RegistrosDeFora from './RegistrosDeFora';
@@ -46,16 +47,27 @@ function ItemDoMarco({ marco }: { marco: Marco }) {
   );
 }
 
+interface Props {
+  pacienteId: string;
+  // Leva o profissional ao Avatar do mesmo paciente (o dono da aba é quem sabe trocar de aba). Sem ela, o aviso dos achados
+  // aparece sem o botão.
+  onAbrirAvatar?: () => void;
+}
+
 // Só LEITURA e calculada na hora: não grava nada e não entra no prontuário. O filtro e o "Ver todos" só mudam o que aparece.
-export default function LinhaDoTempoClinica({ pacienteId }: { pacienteId: string }) {
+export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar }: Props) {
   const { data, isLoading, isError } = useFontesClinicas(pacienteId);
+  // Leitura à parte: a linha do tempo não espera pela contagem dos achados nem cai se ela falhar.
+  const achados = useAchadosParaRevisao(pacienteId);
   const [verTodos, setVerTodos] = useState(false);
   const [semDataAberta, setSemDataAberta] = useState(false);
   const [filtro, setFiltro] = useState<IdDoFiltro>('tudo');
   const hoje = hojeLocalISO();
 
   const linha = useMemo(() => montarLinhaDoTempo(data?.fontes ?? FONTES_VAZIAS, hoje), [data, hoje]);
-  const falhas = data?.falhas ?? (isError ? ['os dados do paciente'] : []);
+  const falhasDasFontes = data?.falhas ?? (isError ? ['os dados do paciente'] : []);
+  const falhas = achados.isError ? [...falhasDasFontes, ROTULO_DOS_ACHADOS_DO_HISTORICO] : falhasDasFontes;
+  const corteDosAchados = achados.isError ? undefined : achados.data?.corte;
   const cortes = data?.cortes ?? [];
 
   const opcoes = useMemo(() => opcoesDeFiltro(linha.marcos), [linha.marcos]);
@@ -91,13 +103,20 @@ export default function LinhaDoTempoClinica({ pacienteId }: { pacienteId: string
 
       <AvisoDeFalhas falhas={falhas} />
 
+      <AvisoDosAchadosDoHistorico
+        total={achados.isError ? undefined : achados.data?.total}
+        contagemIncompleta={corteDosAchados !== undefined}
+        onAbrirAvatar={onAbrirAvatar}
+      />
+
       {linha.comoComecou && <ComoComecouCard dados={linha.comoComecou} />}
 
-      {cortes.length > 0 && (
+      {(cortes.length > 0 || corteDosAchados) && (
         <div data-aviso="cortes" className="space-y-1">
           {cortes.map((corte) => (
             <p key={corte.fonte} className="break-words text-sm text-muted-foreground">{corte.texto}</p>
           ))}
+          {corteDosAchados && <p className="break-words text-sm text-muted-foreground">{corteDosAchados.texto}</p>}
         </div>
       )}
       <RegistrosDeFora registros={linha.registrosIgnorados} />

@@ -207,6 +207,10 @@ export const ROTULO_DA_FONTE: Record<ChaveDaFonte, string> = {
   escalas: 'as escalas',
 };
 
+// Nome da leitura só de CONTAGEM dos achados do Avatar, no aviso "Não consegui ler ...". Fica fora de ROTULO_DA_FONTE de
+// propósito: não é uma fonte da linha do tempo e nada dela vira marco.
+export const ROTULO_DOS_ACHADOS_DO_HISTORICO = 'os achados do histórico';
+
 // Só entra na linha do tempo o que é fato clínico firmado e o que terminou de ser importado. Valores conferidos em
 // 20260607211619 (diagnosticos_paciente.tipo: principal | secundario | suspeita; ativo NOT NULL DEFAULT true) e em
 // 20260607203748 + supabase/functions/import-exame (exames_importados.status: DEFAULT 'pendente'; a função grava

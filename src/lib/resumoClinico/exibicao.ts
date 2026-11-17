@@ -33,3 +33,9 @@ export function detalheParaExibir(item: ItemSemData): string {
 export function nomeDaFonteParaExibir(rotulo: string, nomeDaFonte: string): string | null {
   return semAcentoEmMinuscula(rotulo.trim()) === semAcentoEmMinuscula(nomeDaFonte.trim()) ? null : nomeDaFonte;
 }
+
+/** Frase do aviso dos achados do histórico: "3 achados do histórico aguardando a sua revisão" (singular com 1). */
+export function textoDoAvisoDosAchados(total: number, contagemIncompleta = false): string {
+  const achados = `${total} ${total === 1 ? 'achado' : 'achados'} do histórico aguardando a sua revisão`;
+  return contagemIncompleta ? `Pelo menos ${achados}` : achados;
+}

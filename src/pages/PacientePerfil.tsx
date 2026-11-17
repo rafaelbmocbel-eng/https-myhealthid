@@ -30,6 +30,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
 import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
+import { visaoGeralMostraOAvatar } from '@/lib/avatar/irParaOAvatar';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
@@ -136,6 +137,20 @@ export default function PacientePerfil() {
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const tabsSectionRef = useRef<HTMLDivElement | null>(null);
+  // Pedido da linha do tempo clínica ("Abrir o Avatar"): a Visão Geral abre na sub-aba do Avatar, onde fica a fila de revisão.
+  const [abrirNoAvatar, setAbrirNoAvatar] = useState(false);
+  // Saiu da Visão Geral: esquece o pedido, para voltar a ela depois não abrir o Corpo sem ninguém ter pedido.
+  useEffect(() => {
+    if (activeTab) setAbrirNoAvatar(false);
+  }, [activeTab]);
+  const irParaOAvatar = useCallback(() => {
+    setAbrirNoAvatar(true);
+    setActiveTab('');
+    navigate(`/pacientes/${id}`, { replace: true });
+    window.requestAnimationFrame(() => {
+      tabsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [id, navigate]);
   // Sincroniza a aba ativa quando a URL muda (ex.: navigate após confirmar diretriz)
   useEffect(() => {
     setActiveTab(initialTab);
@@ -1117,6 +1132,7 @@ export default function PacientePerfil() {
                   paciente={paciente as any}
                   onBack={() => navigate('/pacientes')}
                   subTab="integrada"
+                  abrirNoAvatar={abrirNoAvatar}
                 />
               </Suspense>
             </div>
@@ -1155,6 +1171,7 @@ export default function PacientePerfil() {
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
+              onAbrirAvatar={visaoGeralMostraOAvatar(layoutCfg.sub_tabs) ? irParaOAvatar : undefined}
             />
             {id && <CheckinSemanalCard pacienteId={id} variante="avaliacao" />}
             <ResumoConsultaPresencial

@@ -22,9 +22,11 @@ interface Props {
   pacienteId: string;
   patientName: string;
   serviceType?: 'identidade' | 'cobzero' | 'studio';
+  /** Leva ao Avatar do paciente; só vem quando o Avatar existe na visão do perfil. */
+  onAbrirAvatar?: () => void;
 }
 
-export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade' }: Props) {
+export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade', onAbrirAvatar }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -143,7 +145,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     return (
       <div className="space-y-4">
         <AlertaRelatoDoPaciente pacienteId={pacienteId} />
-        <LinhaDoTempoClinica pacienteId={pacienteId} />
+        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} />
       </div>
     );
   }
@@ -207,6 +209,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           resultado={(latest as any).resultado}
           transcricao={(latest as any).transcricao}
           onReprocessar={reprocessarComEdicao}
+          onAbrirAvatar={onAbrirAvatar}
         />
       ) : (
         <VoiceAssessment
@@ -219,7 +222,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
         />
       )}
 
-      {!hasResult && <LinhaDoTempoClinica pacienteId={pacienteId} />}
+      {!hasResult && <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} />}
 
       {/* Dialog: complementar avaliação existente com voz/áudio/texto */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

@@ -32,6 +32,8 @@ interface Props {
   /** Reprocessa a avaliação com um complemento de texto (atualiza todas as abas),
    *  preservando as seções editadas à mão. Fornecido pelo AvaliacaoVozAtual. */
   onReprocessar?: (complementoTexto: string, preservarEditadas: Record<string, string>) => Promise<void>;
+  /** Leva ao Avatar do paciente (aviso dos achados na linha do tempo). Fornecido por quem sabe trocar de aba. */
+  onAbrirAvatar?: () => void;
 }
 
 type SecaoKey =
@@ -956,7 +958,7 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
   );
 }
 
-export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar }: Props) {
+export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar, onAbrirAvatar }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -1662,7 +1664,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         {renderCards(secoesTab)}
                       </div>
                     )}
-                    {tab.id === 'clinico' && <LinhaDoTempoClinica pacienteId={pacienteId} />}
+                    {tab.id === 'clinico' && <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} />}
                   </TabsContent>
                 );
               })}

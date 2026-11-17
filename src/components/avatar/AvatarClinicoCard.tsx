@@ -27,6 +27,7 @@ import { sistemaDaCondicaoSistemica } from '@/utils/condicoesSistemicas';
 import { REGIAO_SISTEMICA } from '@/components/avatar/CondicoesSistemicasCard';
 import AchadoRapido, { type PreviaAchado } from '@/components/avatar/AchadoRapido';
 import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
+import { filaDeRevisao } from '@/lib/avatar/filaDeRevisao';
 import {
   PONTO_ANATOMICO, LS_DOT_OFFSETS, LS_SCALES, LS_FIGURA,
   ZONAS_CORPORAIS, zonePivot, zonaDeRegiao,
@@ -1876,19 +1877,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         {/* Espaço de revisão abaixo do avatar: histórico vindo do portal do paciente ou adicionado pelo profissional. Não afeta o Índice de Homeostase até confirmação.
             Exclusivo do profissional — o paciente não decide o que entra confirmado no próprio avatar clínico. */}
         {isProfessional && (() => {
-          const pendentes = eventos.filter(
-            (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
-          );
-          const pendentesHistorico = eventos.filter(
-            (e) => e.tipo_diagnostico === 'historico_relatado' &&
-              !((e as any).metadata?.revisado_por_ids || []).includes(user?.id) &&
-              !(e as any).metadata?.descartado &&
-              ((e as any).metadata?.rejeicoes?.length || 0) < 3
-          );
-          const descartadosConsenso = eventos.filter(
-            (e) => e.tipo_diagnostico === 'historico_relatado' &&
-              ((e as any).metadata?.descartado || ((e as any).metadata?.rejeicoes?.length || 0) >= 3)
-          );
+          const { relatosDoPaciente: pendentes, historicoRelatado: pendentesHistorico, descartadosPorConsenso: descartadosConsenso } = filaDeRevisao(eventos, user?.id);
           return (
             <div className="space-y-3 border-t border-border/40 pt-3">
               <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Revisão de Histórico</p>

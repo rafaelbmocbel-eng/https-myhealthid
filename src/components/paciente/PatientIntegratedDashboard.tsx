@@ -40,11 +40,14 @@ import {
   Tooltip, Legend, ResponsiveContainer, Area
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { subAbaInicialDaVisaoGeral } from '@/lib/avatar/irParaOAvatar';
 
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
   serviceType: 'identidade' | 'studio';
   isProfessional?: boolean;
+  /** Abre na sub-aba do Avatar (quando ela existe): a linha do tempo clínica leva o profissional até a fila de revisão. */
+  abrirNoAvatar?: boolean;
 }
 
 // ─── Componentes Gráficos Auxiliares ──────────────────────────────────────────
@@ -111,6 +114,7 @@ export default function PatientIntegratedDashboard({
   pacienteId,
   serviceType,
   isProfessional = false,
+  abrirNoAvatar = false,
 }: PatientIntegratedDashboardProps) {
   const { user } = useAuth();
   const { config: layoutCfg } = useLayoutConfig();
@@ -500,7 +504,7 @@ export default function PatientIntegratedDashboard({
           {(() => {
             // "Jornada" migrou para o botão Portal (espelho do portal do paciente).
             const visibleSubs = layoutCfg.sub_tabs.filter(t => t.visivel && t.id !== 'jornada');
-            const defaultSub = visibleSubs[0]?.id ?? 'diagnostico';
+            const defaultSub = subAbaInicialDaVisaoGeral(visibleSubs, abrirNoAvatar, visibleSubs[0]?.id ?? 'diagnostico');
             const gridCols = ['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'][Math.min(visibleSubs.length, 3)] ?? 'grid-cols-3';
             const SUB_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
               diagnostico: Fingerprint,

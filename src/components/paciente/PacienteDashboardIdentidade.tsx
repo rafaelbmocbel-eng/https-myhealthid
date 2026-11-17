@@ -59,9 +59,11 @@ interface Props {
   onBack: () => void;
   /** Controla qual sub-aba é exibida. 'integrada' | 'historico' | 'myid' | 'avaliacoes'. Default: 'integrada' */
   subTab?: 'integrada' | 'historico' | 'myid' | 'avaliacoes';
+  /** Visão Geral abre na sub-aba do Avatar (pedido pela linha do tempo clínica). */
+  abrirNoAvatar?: boolean;
 }
 
-export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }: Props) {
+export default function PacienteDashboardIdentidade({ paciente, onBack, subTab, abrirNoAvatar }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -656,7 +658,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       <Tabs value={subTabAtiva} onValueChange={(v) => setSubTabAtiva(v as typeof subTabAtiva)}>
             
             <TabsContent value="integrada" className="mt-4">
-              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" isProfessional />
+              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" isProfessional abrirNoAvatar={abrirNoAvatar} />
             </TabsContent>
 
 

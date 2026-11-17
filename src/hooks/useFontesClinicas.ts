@@ -6,7 +6,9 @@ import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/o
 import {
   CAMPO_ORIGEM_DO_RELATO, FONTES_VAZIAS, ROTULO_DA_FONTE, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO, TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM,
 } from '@/lib/resumoClinico/tipos';
-import { montarCorte } from '@/lib/resumoClinico/cortes';
+import { montarCorte, montarCorteDosAchados } from '@/lib/resumoClinico/cortes';
+import type { CorteDaContagemDosAchados } from '@/lib/resumoClinico/cortes';
+import { filaDeRevisao, TIPOS_QUE_ENTRAM_NA_FILA, totalAguardandoRevisao } from '@/lib/avatar/filaDeRevisao';
 import type { ChaveDaFonte, ChaveDeLista, CorteDeFonte, FontesClinicas, LinhaBruta } from '@/lib/resumoClinico/tipos';
 
 // Só LEITURA. As colunas historico_clinico e historia_atual e a tabela exames_presenciais não estão em types.ts
@@ -192,6 +194,67 @@ export function useFontesClinicas(pacienteId: string | undefined) {
     staleTime: 30_000,
     // O padrão do app é não reler ao voltar para a aba; aqui vale reler (só passando do staleTime): o profissional edita o
     // histórico em outra aba ou tela e volta para ver a linha do tempo.
+    refetchOnWindowFocus: true,
+  });
+}
+
+// ── Contagem dos achados do histórico aguardando revisão (só número, nenhuma data) ────────────────────────────────────
+// Os achados do histórico relatado gravam a data do ENVIO como data de início: essa data não é lida em lugar nenhum, e por
+// isso nada daqui vira marco. Só as colunas que a regra da fila precisa (tipo, status e três marcas do metadata). As marcas
+// vêm por caminho JSON com apelido, para não baixar o metadata inteiro (texto do paciente, estrutura da história...). A regra
+// é a do Avatar (filaDeRevisao): a leitura devolve só números, nunca as linhas.
+const LIMITE_DE_ACHADOS_PARA_REVISAO = 200;
+const COLUNAS_DA_FILA_DE_REVISAO =
+  'tipo_diagnostico, status, revisado_por_ids:metadata->revisado_por_ids, descartado:metadata->descartado, rejeicoes:metadata->rejeicoes';
+
+export interface AchadosParaRevisao {
+  // Relato do paciente + histórico relatado que este profissional ainda precisa revisar.
+  total: number;
+  relatosDoPaciente: number;
+  historicoRelatado: number;
+  // Só quando a leitura passou do limite: a contagem pode estar menor que a real.
+  corte?: CorteDaContagemDosAchados;
+}
+
+/**
+ * Conta os achados do Avatar deste paciente que aguardam a revisão deste profissional. Só `select`, do paciente aberto e do
+ * profissional logado, com limite + 1 como as outras fontes.
+ */
+export async function lerAchadosParaRevisao(pacienteId: string, terapeutaId: string): Promise<AchadosParaRevisao> {
+  const banco = supabase as unknown as BancoSoLeitura;
+  const { linhas, limiteCortado } = await listaLimitada(
+    banco.from('eventos_clinicos_anatomicos').select(COLUNAS_DA_FILA_DE_REVISAO)
+      .eq('paciente_id', pacienteId).eq('terapeuta_id', terapeutaId)
+      .in('tipo_diagnostico', TIPOS_QUE_ENTRAM_NA_FILA)
+      .order('id', { ascending: true }),
+    LIMITE_DE_ACHADOS_PARA_REVISAO,
+  );
+  const eventos = linhas.map((linha) => ({
+    tipo_diagnostico: linha.tipo_diagnostico,
+    status: linha.status,
+    metadata: { revisado_por_ids: linha.revisado_por_ids, descartado: linha.descartado, rejeicoes: linha.rejeicoes },
+  }));
+  const fila = filaDeRevisao(eventos, terapeutaId);
+  return {
+    total: totalAguardandoRevisao(fila),
+    relatosDoPaciente: fila.relatosDoPaciente.length,
+    historicoRelatado: fila.historicoRelatado.length,
+    ...(limiteCortado !== undefined ? { corte: montarCorteDosAchados(limiteCortado) } : {}),
+  };
+}
+
+// Leitura própria, fora de useFontesClinicas: a linha do tempo não espera por ela nem cai se ela falhar. A chave começa com
+// ['eventos-anatomicos', paciente]: tudo que o Avatar já invalida depois de confirmar, descartar ou rejeitar um achado
+// (useEventosAnatomicos, AvatarClinicoCard) invalida esta contagem junto, sem mexer nesses pontos. Sem guardar a resposta
+// depois de sair da tela (gcTime 0): ao voltar do Avatar a contagem é lida de novo, nunca a de antes da revisão.
+export function useAchadosParaRevisao(pacienteId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['eventos-anatomicos', pacienteId, 'fila-de-revisao', user?.id],
+    queryFn: () => lerAchadosParaRevisao(pacienteId!, user!.id),
+    enabled: !!user && !!pacienteId,
+    staleTime: 30_000,
+    gcTime: 0,
     refetchOnWindowFocus: true,
   });
 }

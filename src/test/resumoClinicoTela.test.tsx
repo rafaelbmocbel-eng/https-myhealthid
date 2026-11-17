@@ -405,15 +405,20 @@ describe('Linha do tempo clínica', () => {
     expect(r.textContent).not.toContain('Sem data nenhuma');
   });
 
-  it('não escreve nada no banco e só lê as fontes combinadas (nem os achados do avatar, nem o prontuário)', async () => {
-    h.falso.tabelas.eventos_clinicos_anatomicos = [{ id: 'ev', paciente_id: 'pac-1', tipo_diagnostico: 'historico_relatado', origem: 'relato_paciente', data_inicio: new Date().toISOString().slice(0, 10), tipo_achado: 'Dor no joelho do relato' }];
+  it('não escreve nada no banco; lê os achados do avatar só para CONTAR (sem coluna de data) e nunca o prontuário', async () => {
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    h.falso.tabelas.eventos_clinicos_anatomicos = [{ id: 'ev', paciente_id: 'pac-1', terapeuta_id: 'prof-1', tipo_diagnostico: 'historico_relatado', origem: 'relato_paciente', data_inicio: hojeIso, tipo_achado: 'Dor no joelho do relato', metadata: {} }];
     montarLinha();
     const r = await regiao();
     await waitFor(() => expect(within(r).getByText('Bioimpedância')).toBeInTheDocument());
+    await waitFor(() => expect(r.querySelector('[data-aviso="achados-do-historico"]')).not.toBeNull());
     expect(h.falso.escritas()).toEqual([]);
-    expect(h.falso.operacoes.map((o) => o.tabela)).not.toContain('eventos_clinicos_anatomicos');
+    const lidasDosAchados = h.banco.chamadas.filter((c) => c.tabela === 'eventos_clinicos_anatomicos' && c.metodo === 'select');
+    expect(lidasDosAchados).toHaveLength(1);
+    expect(String(lidasDosAchados[0].args[0])).not.toMatch(/data_|created_at|updated_at|\*/);
     expect(h.falso.operacoes.map((o) => o.tabela)).not.toContain('notas_prontuario');
     expect(r.textContent).not.toContain('Dor no joelho do relato');
+    expect(r.textContent).not.toContain(new Date().toLocaleDateString('pt-BR'));
   });
 
   it('acessível e sem rolagem lateral: região com nome, alvos de toque de 44 px, foco visível e textos que quebram linha', async () => {

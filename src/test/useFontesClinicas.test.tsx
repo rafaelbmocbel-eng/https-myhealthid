@@ -92,7 +92,8 @@ function cenario(): Record<string, Linha[]> {
     ],
     testes_funcionais_paciente: [{ id: 't1', paciente_id: 'pac-1', tipo_teste: 'tug', resultado: 9, unidade: 'segundos', data_teste: '2026-06-01', classificacao: 'x' }],
     escalas_psicologia: [{ id: 's1', paciente_id: 'pac-1', tipo_escala: 'phq9', pontuacao_total: 7, data_aplicacao: '2026-05-01', respostas: [1, 2, 3] }],
-    // O que NÃO pode ser lido: achados do avatar (data de início = dia do envio) e as notas do prontuário.
+    // O que lerFontesClinicas NÃO lê: os achados do avatar (data de início = dia do envio; só a contagem, em lerAchadosParaRevisao,
+    // e sem coluna de data) e as notas do prontuário.
     eventos_clinicos_anatomicos: [{ id: 'ev1', paciente_id: 'pac-1', tipo_diagnostico: 'historico_relatado', origem: 'relato_paciente', data_inicio: '2026-11-15', tipo_achado: 'Dor no joelho' }],
     notas_prontuario: [{ id: 'n1', paciente_id: 'pac-1', titulo: 'Nota' }],
   };

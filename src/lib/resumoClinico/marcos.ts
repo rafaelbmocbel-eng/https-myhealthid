@@ -19,8 +19,8 @@ import type {
 // Nada é inventado: cada marco tem a data que o próprio registro traz. Texto livre do cliente ("há 2 anos") nunca vira
 // data, vai para "Sem data". Registro do profissional sem a data do fato (diagnóstico, exame importado) também vai para
 // "Sem data": a data em que foi gravado no app não é a data do fato e não vira marco. eventos_clinicos_anatomicos não
-// entra: os achados do histórico relatado gravam a data do ENVIO como data de início, e não dá para separar com certeza
-// o que o profissional datou de verdade.
+// entra nos marcos: os achados do histórico relatado gravam a data do ENVIO como data de início, e não dá para separar com
+// certeza o que o profissional datou de verdade. (O aviso "N achados aguardando revisão" só conta, sem data, fora desta camada.)
 
 const NOTA_SEM_DATA_DO_DIAGNOSTICO = 'A data do diagnóstico não foi informada';
 const NOTA_DATA_INVALIDA_DO_DIAGNOSTICO = 'A data do diagnóstico registrada não é válida';

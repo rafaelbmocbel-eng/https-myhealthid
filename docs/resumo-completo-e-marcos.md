@@ -32,7 +32,8 @@ Avisos fixos no Completo (na tela):
 ## De onde vem cada coisa
 
 Cada fonte é lida em separado (`src/hooks/useFontesClinicas.ts`, só `select`). Se uma falha, aparece "Não consegui ler ..." e as
-outras continuam. A leitura das datas de conclusão do MyID (`avaliacoes_identidade`) também é uma fonte à parte: se falhar, o aviso
+outras continuam. (Os achados do Avatar são uma leitura **à parte e só de contagem**, nunca uma fonte de marcos: ver "Aviso dos
+achados do histórico".) A leitura das datas de conclusão do MyID (`avaliacoes_identidade`) também é uma fonte à parte: se falhar, o aviso
 diz "as datas de conclusão do MyID" e os MyIDs aparecem como "último registro".
 
 | Fonte | Vira | Origem / selo |
@@ -175,8 +176,10 @@ segunda barreira.
 - **Nenhum marco recebe a data de hoje por falta de data.**
 - A faixa **"Sem data"** mistura itens do cliente e do profissional; **cada item mantém o próprio selo de origem**. Fica recolhida
   por padrão, mas o bloco fica montado (só escondido) para o botão apontar para um id que existe.
-- `eventos_clinicos_anatomicos` **não é lido**: os achados do histórico relatado gravam a data do **envio** como data de início
-  e não dá para separar, com certeza, o que o profissional datou de verdade.
+- `eventos_clinicos_anatomicos` (os achados do Avatar) **não é lido para marcos nem para datas**: os achados do histórico relatado
+  gravam a data do **envio** como data de início e não dá para separar, com certeza, o que o profissional datou de verdade.
+  **Há uma única exceção, só de CONTAGEM e sem nenhuma data**: o aviso "N achados do histórico aguardando a sua revisão" (ver
+  "Aviso dos achados do histórico"). A tabela continua sem virar marco, sem entrar em "Sem data" e sem entrar em "Como começou".
 - Ordem: **mais recente primeiro** (a do resto do app), agrupada por ano; dentro do ano, o que tem dia vem antes do que só tem o
   ano. Empate de data desempata pelo id **em ordem natural** (os números do id valem pelo valor: `cirurgia:2` antes de `cirurgia:10`,
   e não o contrário, como no texto puro); id igual é empate (o comparador devolve 0 e a ordem de chegada é mantida). A tela mostra
@@ -281,6 +284,72 @@ corrigir isso exigiria gravar o id no histórico do cliente, o que esta etapa ev
   (`HistoricoClinicoCard.tsx`, botão de enviar); o autosave grava `{ ...dados, atualizado_em }` e só devolve o `ultimo_envio` que já
   estava lá, sem mudar o valor.
 
+### Aviso dos achados do histórico (a única exceção: só a contagem)
+
+Decisão do Rafael: a linha do tempo mostra um aviso curto, **"3 achados do histórico aguardando a sua revisão"** (singular: "1 achado
+do histórico aguardando a sua revisão"), com o botão **"Abrir o Avatar"**, que leva ao Avatar do mesmo paciente, onde já existe a fila
+de revisão. Nada é gravado, não há IA e **nenhuma data de achado é lida ou mostrada nem vira marco**.
+
+**Por que a contagem é segura (e as datas continuam proibidas).** O que viraria "fato falso" é a **data**: o achado do histórico
+relatado grava a data do envio como data de início, e um marco com essa data diria que algo aconteceu naquele dia. Um número não diz
+quando nada aconteceu, e o texto do aviso só diz que há itens **esperando a revisão do profissional** (nunca "confirmado", nunca
+"diagnóstico"). Por isso só a contagem entra; as datas seguem fora:
+
+- A leitura pede só `tipo_diagnostico`, `status` e três marcas do `metadata` por caminho JSON com apelido
+  (`revisado_por_ids`, `descartado`, `rejeicoes`), sem baixar o `metadata` inteiro (texto do paciente, história estruturada...). **Nunca**
+  `data_inicio`, `data_resolucao`, `created_at`, `updated_at` nem `descartado_em`; não filtra nem ordena por data (ordena por `id`).
+  Limite conhecido e honesto: `rejeicoes` é uma lista e cada item traz o instante da rejeição (a data da **revisão**, não a do achado).
+  Ele viaja na leitura, mas o código só conta quantos itens a lista tem, a função devolve **só números** e nada disso é guardado nem
+  mostrado.
+- Os marcos, a faixa "Sem data" e o cartão "Como começou" **não mudam**: um teste compara a linha do tempo inteira com e sem achados
+  aguardando e confere que o texto e a data do achado não aparecem em lugar nenhum.
+
+**Onde mora a regra da fila (uma só).** `src/lib/avatar/filaDeRevisao.ts`, função pura `filaDeRevisao(eventos, profissionalId)` (mais
+`totalAguardandoRevisao`). O `AvatarClinicoCard` perdeu o código que estava escrito dentro dele e usa a função, e a leitura do aviso
+usa a mesma: o número do aviso não tem como divergir do que o Avatar mostra. A regra:
+
+| Parte | Entra quando |
+| --- | --- |
+| Relato do paciente | `tipo_diagnostico = relato_paciente` e `status` diferente de `resolvido` |
+| Histórico relatado (a fila) | `tipo_diagnostico = historico_relatado`, **este** profissional ainda não revisou (`revisado_por_ids`), não foi descartado (`descartado`) e tem **menos de 3** rejeições |
+| Descartados por consenso (só para consulta no Avatar) | `historico_relatado` com `descartado` ou **3 rejeições ou mais** |
+
+O total do aviso é relato + histórico (os descartados não contam). O comportamento do Avatar é o mesmo de antes: um teste guarda uma
+cópia literal do código antigo e compara com a função em dezenas de milhares de combinações (tipo, status, profissional, marcas do
+`metadata`, inclusive com tipo errado); a única diferença é onde o código antigo quebrava com `TypeError` (`revisado_por_ids` que não é
+lista nem texto): a função não lança e trata como "este profissional não revisou". O Avatar também foi montado de verdade, antes e
+depois da troca, com o mesmo resultado (`avatarFilaDeRevisaoTela.test.tsx`).
+
+**A leitura.** `lerAchadosParaRevisao` e o hook `useAchadosParaRevisao`, em `useFontesClinicas.ts`:
+
+- **Só do paciente aberto e do profissional logado** (`paciente_id` e `terapeuta_id`; é o mesmo conjunto que o Avatar enxerga pela RLS) e só
+  dos dois tipos da fila. Só `select`.
+- **À parte de `lerFontesClinicas`**: o aviso não derruba nem atrasa a linha do tempo, que continua sem tocar a tabela dos achados.
+- **Limite de 200, com limite + 1** como as outras fontes: se a linha extra vier, conta só as 200 e o aviso passa a "Pelo menos N achados
+  ..." com a frase **"Achados do histórico: contei só os 200 primeiros; pode haver mais aguardando a sua revisão."** junto dos outros avisos de
+  corte (não diz "mais recentes", porque nenhuma data é lida para ordenar). Exatamente 200 não é corte.
+- **Falha isolada**: entra no aviso de falhas como **"os achados do histórico"** ("Não consegui ler os achados do histórico.", ou junto das
+  outras fontes: "as escalas e os achados do histórico"); nesse caso não há aviso de achados nem botão, e o resto da linha do tempo segue.
+- **Cache**: a chave é `['eventos-anatomicos', paciente, 'fila-de-revisao', profissional]`. Tudo que o Avatar já invalida depois de
+  confirmar, ajustar ou rejeitar um achado (`['eventos-anatomicos', paciente]`) refaz esta contagem sem mexer nesses pontos; e a resposta não
+  é guardada depois de sair da tela (`gcTime: 0`), para voltar do Avatar nunca mostrar o número de antes da revisão.
+
+**A tela.** `AvisoDosAchadosDoHistorico.tsx`, logo abaixo do aviso "Não consegui ler ..." e acima de "Como começou", dos marcos e de "Sem data".
+Celular (390 px): texto que quebra linha (sem `truncate` nem `line-clamp`), botão de 44 px (`min-h-11`) na largura toda, foco visível e
+`aria-describedby` apontando para o texto do aviso. **O botão só existe** quando há a função `onAbrirAvatar` **e** a contagem é maior que
+zero **e** a leitura terminou sem falha: sem a função aparece só o texto; com contagem 0, durante a leitura ou com falha não aparece nada
+do aviso. A linha do tempo não navega: recebe a função por prop (o dono da aba é quem sabe trocar de aba), então os arquivos dela
+continuam sem `window.open`, rota nem `/paciente`.
+
+**Como chega ao Avatar.** O Avatar do profissional só existe na **Visão Geral** do perfil, na sub-aba **"Corpo"** (a aba Avaliação, onde fica
+a linha do tempo, não o tem). `PacientePerfil` passa `onAbrirAvatar` (via `AvaliacaoVozAtual`, nas três formas da aba, e
+`AvaliacaoSecoesEditaveis`) e, ao clicar, troca para a Visão Geral (`setActiveTab('')` e `/pacientes/<id>`), pede a sub-aba do Avatar
+(`abrirNoAvatar`, que passa por `PacienteDashboardIdentidade` até `PatientIntegratedDashboard`) e rola até as abas. O pedido vale uma vez:
+sair da Visão Geral o esquece. **O botão some quando o Avatar não está lá**: `visaoGeralMostraOAvatar` (`src/lib/avatar/irParaOAvatar.ts`)
+confere se o layout do profissional deixa a sub-aba "Corpo" visível; sem ela, o aviso fica e o botão não. (A lente profissional,
+`useLenteAtiva`, **não** esconde o Avatar na Visão Geral: quem decide é o layout.) Ele leva ao Avatar, **não** até a fila de revisão, que
+fica no fim do cartão do Avatar.
+
 ## Selos de origem
 
 - O que veio do **cliente** leva **"Relatado pelo cliente, não revisado"**; o que o **profissional** registrou leva **"Registrado
@@ -330,8 +399,8 @@ profissional precisa enxergar para conferir com o cliente. Um teste registra ess
 Fica em `LinhaDoTempoClinica.tsx` e nos componentes ao lado. Foi pensada para o celular (390 px): uma coluna, texto que quebra linha,
 nada de rolagem para o lado.
 
-**Ordem, de cima para baixo:** cabeçalho, aviso "Não consegui ler ..." (se alguma fonte falhou), cartão **"Como começou"**, avisos de
-corte, aviso dos registros que ficaram de fora, chips de filtro (quando valem), marcos agrupados por ano, "Ver todos" e a faixa
+**Ordem, de cima para baixo:** cabeçalho, aviso "Não consegui ler ..." (se alguma fonte falhou), aviso **dos achados do histórico** (se houver
+achados aguardando revisão), cartão **"Como começou"**, avisos de corte, aviso dos registros que ficaram de fora, chips de filtro (quando valem), marcos agrupados por ano, "Ver todos" e a faixa
 "Sem data".
 
 ### Cartão "Como começou"
@@ -420,6 +489,9 @@ depois dos 30 s do `staleTime`, para o profissional que editou em outra aba ou t
 | `avaliacoes_voz` | excluir a avaliação atual, reprocessar o complemento e as outras rotas que usam `invalidarCachesAvaliacaoVoz` | `utils/voiceAssessment/reprocessarComplemento.ts` |
 | `myid_avaliacoes` e `avaliacoes_identidade` | excluir um MyID e o histórico ligado a ele | `PacienteDashboardIdentidade.tsx` |
 
+A contagem dos achados do Avatar tem a própria chave (`['eventos-anatomicos', paciente, 'fila-de-revisao', profissional]`) e fica fora
+deste prefixo: ela refaz quando o Avatar invalida `['eventos-anatomicos', paciente]` e não é guardada depois de sair da tela.
+
 **Sem chamada, de propósito:**
 
 - `pacientes.historico_clinico` e `pacientes.historia_atual`: quem grava é o próprio cliente, no portal (fora do alcance desta etapa).
@@ -455,6 +527,8 @@ continua lá); elas não executam a tela.
 - **Diagnósticos e exames importados leem até 200 linhas**, ordenados por data mais recente primeiro e **com os sem data por último**.
   Acima disso saem primeiro as linhas sem data (a faixa "Sem data" pode ficar incompleta) e depois as de data mais antiga. Subir mais
   o limite pesaria a leitura de todo perfil aberto.
+- **Achados do Avatar (só a contagem)** leem até 200 linhas, em ordem de `id` (sem data). Acima disso a contagem pode ser menor que a real e o
+  aviso diz "Pelo menos N", com a frase do corte (ver "Aviso dos achados do histórico").
 - **Aviso de corte.** Cada lista é lida com **limite + 1** (51, 201, 21...): se a linha extra vier, a lista passou do limite, a linha
   extra é descartada e a fonte entra em `cortes`, no resultado do hook (`lerFontesClinicas` e `useFontesClinicas`). Cada corte é
   `{ fonte, nome, limite, texto }`, com `texto` pronto, por exemplo **"Diagnósticos: mostrando os 200 mais recentes."**: a tela só
@@ -467,12 +541,17 @@ continua lá); elas não executam a tela.
 ## Onde está no código
 
 - Camada pura (sem React nem Supabase): `src/lib/resumoClinico/` (`tipos`, `leitura`, `datas`, `marcos`, `resumoCompleto`, `cortes`).
-- Dados: `src/hooks/useFontesClinicas.ts` (leitura, `cortes`, `invalidarFontesClinicas`).
+- Dados: `src/hooks/useFontesClinicas.ts` (leitura, `cortes`, `invalidarFontesClinicas`, e a contagem dos achados:
+  `lerAchadosParaRevisao` e `useAchadosParaRevisao`).
+- Regra da fila de revisão do Avatar (única, pura): `src/lib/avatar/filaDeRevisao.ts`, usada por `AvatarClinicoCard.tsx` e pela leitura
+  da contagem. Caminho até o Avatar: `src/lib/avatar/irParaOAvatar.ts` (`visaoGeralMostraOAvatar`, `subAbaInicialDaVisaoGeral`).
 - Telas: `src/components/resumoClinico/` (`ResumoClinicoVisoes`, `ResumoCompleto`, `LinhaDoTempoClinica`, `ComoComecouCard`,
-  `FiltroDeMarcos`, `RegistrosDeFora`, `SeloDeOrigem`, `AvisoDeFalhas`). Lógica de exibição sem React: `exibicao.ts` (título, rótulo do
+  `FiltroDeMarcos`, `RegistrosDeFora`, `SeloDeOrigem`, `AvisoDeFalhas`, `AvisoDosAchadosDoHistorico`). Lógica de exibição sem React: `exibicao.ts` (título, rótulo do
   tipo, detalhe) e `filtros.ts` (categorias e chips).
 - Escrita da data do diagnóstico (a única parte desta etapa que grava, e só pelo profissional): `src/components/medicina/DiagnosticosCID10Card.tsx`
   (a camada pura da linha do tempo continua sem escrever nada; o corte e as funções de data ficam em `tipos.ts` e `datas.ts`).
+- Botão "Abrir o Avatar" (só passa uma função e um pedido): `PacientePerfil.tsx`, `AvaliacaoVozAtual.tsx`, `AvaliacaoSecoesEditaveis.tsx`,
+  `PacienteDashboardIdentidade.tsx` e `PatientIntegratedDashboard.tsx`.
 - Encaixe (poucas linhas): `AvaliacaoSecoesEditaveis.tsx` (o cartão do Resumo passa pelo seletor; a linha do tempo entra no fim
   da aba Clínico) e `AvaliacaoVozAtual.tsx` (sem avaliação por voz, ou com a gravação ainda aberta, a linha do tempo aparece).
 - Banco falso dos testes: `src/test/helpers/bancoFalso.ts` ganhou projeção de coluna jsonb com apelido
@@ -489,6 +568,14 @@ continua lá); elas não executam a tela.
   `resumoClinicoDataExplicitaDoDiagnostico.test.ts`; o campo "Data do diagnóstico" do cartão de CID (adicionar sem data envia `null`,
   com data envia a data, data no futuro recusada, informar/corrigir/limpar com `update` só no diagnóstico certo, erro do banco com toast
   e sem invalidar), em `diagnosticosCID10Card.test.tsx`.
+
+Os testes do aviso dos achados: a regra da fila (matriz de casos, comparação com o código antigo do Avatar, uso único) em
+`avatarFilaDeRevisao.test.ts`; o Avatar montado de verdade, igual antes e depois da troca, em `avatarFilaDeRevisaoTela.test.tsx`; a leitura
+(colunas, paciente e profissional, nunca data, limite + 1, falha isolada, cache) em `achadosParaRevisaoLeitura.test.tsx`; a tela (singular e
+plural, botão, sem a função, contagem 0, leitura em andamento, falha, marcos e "Sem data" iguais, 44 px) em `resumoClinicoAchadosTela.test.tsx`;
+o caminho até o Avatar em `perfilAbrirOAvatar.test.tsx` (a página do perfil de verdade), `visaoGeralAbreNoAvatar.test.tsx` e
+`avatarIrParaOAvatar.test.ts`. O teste de privacidade (`resumoClinicoPrivacidade.test.ts`) não mudou e continua valendo para todos os arquivos
+da linha do tempo, inclusive o aviso novo.
 
 ## Etapas futuras (não fazem parte desta)
 
