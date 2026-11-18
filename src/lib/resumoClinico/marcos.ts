@@ -1,6 +1,10 @@
 import { tipoExame } from '@/lib/examesPresenciais';
 import { ehRelatoDoPaciente, ORIGENS_PACIENTE } from '@/utils/voiceAssessment/origemAvaliacao';
-import { anoDaData, anoDoHistorico, dataDeTabela, dataDoDiagnosticoPodeSerDoSistema, formatarData } from './datas';
+import { chaveConfirmavel, chaveDaConfirmacao, impressaoDe, impressaoDoRelato, lerConfirmacao } from './confirmacao';
+import type { ConfirmacaoLida } from './confirmacao';
+import {
+  anoDaData, anoDoHistorico, dataDaHistoriaDeVida, dataDeTabela, dataDoDiagnosticoPodeSerDoSistema, formatarData,
+} from './datas';
 import {
   humanizarCodigo, lerHistoriaAtual, lerHistoricoClinico, lerRespostasDoMyid, myidConcluido, textoLimpo,
 } from './leitura';
@@ -9,11 +13,11 @@ import {
   CAMPO_ORIGEM_DO_RELATO, DETALHE_DATA_LIDA_DO_DOCUMENTO, DETALHE_MYID_CONCLUIDO, DETALHE_MYID_ULTIMO_REGISTRO,
   FONTES_COM_DESTINO, MOTIVO_DATA_NAO_VALIDA, ROTULO_CIRURGIA_DO_CLIENTE, ROTULO_FAIXA_MYID, ROTULO_INICIO_HISTORIA_ATUAL,
   ROTULO_O_QUE_FAZIA_MYID, ROTULO_QUANDO_MYID, ROTULO_QUEIXA_HISTORIA_ATUAL, ROTULO_QUEIXA_MYID, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO,
-  TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM, TITULO_MYID_CONCLUIDO, TITULO_MYID_ULTIMO_REGISTRO,
+  FRASE_SO_O_ANO, TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM, TITULO_MYID_CONCLUIDO, TITULO_MYID_ULTIMO_REGISTRO,
 } from './tipos';
 import type {
-  ComoComecou, DestinoDoRegistro, FonteComDestino, FonteDoMarco, FontesClinicas, GrupoPorAno, ItemSemData, LinhaBruta,
-  LinhaDoTempo, Marco, OrigemDoDado, RegistroIgnorado, RelatoDoCliente, TipoDoMarco,
+  ComoComecou, DestinoDoRegistro, FonteComDestino, FonteDoMarco, FontesClinicas, GrupoPorAno, ItemSemData,
+  LinhaBruta, LinhaDoTempo, Marco, OrigemDoDado, RegistroIgnorado, RelatoDoCliente, SituacaoDaConfirmacao, TipoDoMarco,
 } from './tipos';
 
 // Nada é inventado: cada marco tem a data que o próprio registro traz. Texto livre do cliente ("há 2 anos") nunca vira
@@ -140,6 +144,18 @@ export function agruparPorAno(marcos: Marco[]): GrupoPorAno[] {
   return grupos;
 }
 
+// Qual linha foi gravada primeiro: created_at, e o id desempata. created_at ilegível conta como o mais novo.
+function criadaAntes(a: LinhaBruta, b: LinhaBruta): boolean {
+  const instante = (linha: LinhaBruta) => {
+    const t = typeof linha.created_at === 'string' ? Date.parse(linha.created_at) : Number.NaN;
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+  };
+  const ta = instante(a);
+  const tb = instante(b);
+  if (ta !== tb) return ta < tb;
+  return textoLimpo(a.id) < textoLimpo(b.id);
+}
+
 export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaDoTempo {
   const marcos: Marco[] = [];
   const semData: ItemSemData[] = [];
@@ -168,6 +184,21 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
     registrosIgnorados.push({ id, fonte, rotulo, motivo: MOTIVO_DATA_NAO_VALIDA });
   };
 
+  // ── Confirmações do profissional (pré-passada) ─────────────────────────────
+  // A linha de história de vida com a marca de confirmação, e com data válida, é a data real de uma cirurgia que o cliente
+  // relatou. Data inválida não entra: a linha vai para "registros de fora" e o relato do cliente continua à vista. Duas
+  // linhas com a mesma chave não deveriam existir (o id é fixo); se existirem, vale a mais antiga.
+  const lidas = fontes.historiaVida.map(lerConfirmacao);
+  const confirmacoes = new Map<string, { linha: LinhaBruta; lida: ConfirmacaoLida }>();
+  fontes.historiaVida.forEach((linha, posicao) => {
+    const lida = lidas[posicao];
+    if (!lida || !dataDaHistoriaDeVida(linha.data_evento, lida.precisao, hoje)) return;
+    const atual = confirmacoes.get(lida.chave);
+    if (!atual || criadaAntes(linha, atual.linha)) confirmacoes.set(lida.chave, { linha, lida });
+  });
+  // O que aconteceu com cada confirmação diante do relato de hoje do cliente; sem entrada, o item foi apagado.
+  const situacaoDasChaves = new Map<string, SituacaoDaConfirmacao>();
+
   // ── Cliente: histórico clínico (cirurgias) ─────────────────────────────────
   const historico = lerHistoricoClinico(fontes.paciente?.historico_clinico);
   // O formulário do cliente grava um id em cada cirurgia: com ele, a chave não muda se o cliente apagar uma cirurgia mais
@@ -184,17 +215,31 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
   };
   for (const c of historico.cirurgias) {
     const id = idDaCirurgia(c);
+    const chave = chaveDaConfirmacao(c, id);
+    const ano = textoLimpo(c.anoOriginal);
+    const confirmavel = chaveConfirmavel(chave);
+    const confirmada = confirmavel ? confirmacoes.get(chave) : undefined;
+    // O relato só sai da lista se o texto de hoje for o mesmo que o profissional confirmou. Texto mudado: o relato fica à
+    // vista, sem botão de confirmar de novo (a linha com aquele id já existe).
+    if (confirmada && impressaoDe(confirmada.lida.relato) === impressaoDoRelato(c.tipo, c.anoOriginal, c.complicacoes)) {
+      situacaoDasChaves.set(chave, 'igual');
+      continue;
+    }
+    if (confirmada) situacaoDasChaves.set(chave, 'alterado');
+    const paraConfirmar = {
+      ...(confirmavel ? { cirurgiaDoCliente: { chave, tipo: c.tipo, ano, complicacoes: c.complicacoes } } : {}),
+      ...(confirmada ? { confirmacaoExistente: true } : {}),
+    };
     const data = anoDoHistorico(c.anoOriginal, hoje);
     if (data) {
       doCliente({
         id, data, titulo: c.tipo, detalhe: c.complicacoes ? `Complicações: ${c.complicacoes}` : undefined,
-        tipo: 'cirurgia', rotuloTipo: ROTULO_CIRURGIA_DO_CLIENTE, fonte: 'historico_clinico', natureza: 'fato',
+        tipo: 'cirurgia', rotuloTipo: ROTULO_CIRURGIA_DO_CLIENTE, fonte: 'historico_clinico', natureza: 'fato', ...paraConfirmar,
       });
     } else {
-      const ano = textoLimpo(c.anoOriginal);
       const partes = [ROTULO_CIRURGIA_DO_CLIENTE, ano ? `Ano que o cliente escreveu: "${ano}"` : 'Ano não informado'];
       if (c.complicacoes) partes.push(`Complicações: ${c.complicacoes}`);
-      semDataDoCliente({ id, titulo: c.tipo, detalhe: partes.join(' · '), fonte: 'historico_clinico', tipo: 'cirurgia' });
+      semDataDoCliente({ id, titulo: c.tipo, detalhe: partes.join(' · '), fonte: 'historico_clinico', tipo: 'cirurgia', ...paraConfirmar });
     }
   }
   // ultimo_envio só muda no envio explícito (HistoricoClinicoCard); o autosave regrava o valor que já estava lá.
@@ -284,12 +329,27 @@ export function montarLinhaDoTempo(fontes: FontesClinicas, hoje: string): LinhaD
     const tipo = textoLimpo(linha.tipo);
     const rotuloTipo = tem(ROTULO_DO_TIPO_DE_VIDA, tipo) ? ROTULO_DO_TIPO_DE_VIDA[tipo] : (humanizarCodigo(tipo) || 'História de vida');
     const titulo = textoLimpo(linha.titulo) || rotuloTipo;
-    const data = dataDeTabela(linha.data_evento, hoje);
+    // Só a linha com a marca de confirmação lê a precisão do metadata; as demais são sempre "dia", como sempre foram.
+    const lida = lidas[posicao];
+    const data = dataDaHistoriaDeVida(linha.data_evento, lida?.precisao, hoje);
     if (!data) {
       ignorar(id, 'historia_vida', titulo);
       return;
     }
     const descricao = textoLimpo(linha.descricao);
+    if (lida && confirmacoes.get(lida.chave)?.linha === linha) {
+      // A frase "só o ano" existe para quem lê só a coluna; aqui a data já mostra só o ano e repetir confundiria.
+      const soAFraseDoAno = descricao === FRASE_SO_O_ANO(data.iso);
+      doProfissional({
+        id, data, titulo, detalhe: soAFraseDoAno ? undefined : descricao || undefined,
+        tipo: tipo === 'cirurgia' ? 'cirurgia' : 'evento_de_vida', rotuloTipo, fonte: 'historia_vida', natureza: 'fato',
+        confirmacao: {
+          idDaLinha: lida.idDaLinha, chave: lida.chave, relatoOriginal: lida.relato, situacao: situacaoDasChaves.get(lida.chave) ?? 'apagado',
+          confirmadoEm: dataDeTabela(linha.created_at, hoje), por: lida.por,
+        },
+      });
+      return;
+    }
     doProfissional({
       id, data, titulo,
       detalhe: descricao || undefined, tipo: tipo === 'cirurgia' ? 'cirurgia' : 'evento_de_vida', rotuloTipo,

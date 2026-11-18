@@ -54,6 +54,36 @@ export interface DestinoDoRegistro {
   id: string;
 }
 
+// O que o cliente escreveu numa cirurgia, como texto aparado: é a base da impressão digital que prova que o relato de hoje
+// é o mesmo que o profissional confirmou.
+export interface RelatoDaCirurgia {
+  tipo: string;
+  ano: string;
+  complicacoes: string;
+}
+
+// Relato do cliente que o profissional pode confirmar com a data real. A chave NÃO é o id do marco: é a chave da confirmação
+// (ver chaveDaConfirmacao), que muda quando o item sem id muda de posição ou de texto.
+export interface CirurgiaDoCliente extends RelatoDaCirurgia {
+  chave: string;
+}
+
+// igual: o relato do cliente de hoje é o confirmado (e some da lista). alterado: a chave bate mas o texto mudou (o relato
+// do cliente continua à vista). apagado: nenhum item do cliente tem mais a chave.
+export type SituacaoDaConfirmacao = 'igual' | 'alterado' | 'apagado';
+
+export interface ConfirmacaoDoMarco {
+  // O uuid cru da linha (sem o prefixo "historia_vida:"): é o que o desfazer precisa.
+  idDaLinha: string;
+  chave: string;
+  // O texto guardado na confirmação, nunca o dado vivo do cliente.
+  relatoOriginal: RelatoDaCirurgia;
+  situacao: SituacaoDaConfirmacao;
+  // Dia do Brasil em que a confirmação foi gravada; nulo se o created_at não for legível.
+  confirmadoEm: DataDoMarco | null;
+  por: string | null;
+}
+
 export interface Marco {
   // Estável entre leituras: fonte + id da origem (+ posição, nos itens de uma lista do cliente).
   id: string;
@@ -73,6 +103,12 @@ export interface Marco {
   // Como o botão "Abrir" chama o registro para o leitor de tela ("a avaliação de 06/10/2026", "o diagnóstico M54.5"). Vem
   // junto com `destino` e nunca sozinho.
   rotuloDoDestino?: string;
+  // Só no relato estruturado do cliente que dá para confirmar (cirurgia com chave válida).
+  cirurgiaDoCliente?: CirurgiaDoCliente;
+  // O relato do cliente já tem confirmação válida (com o texto mudado depois): não ganha o botão de confirmar de novo.
+  confirmacaoExistente?: boolean;
+  // Só no marco que o profissional confirmou com a data real.
+  confirmacao?: ConfirmacaoDoMarco;
 }
 
 // Item sem data de verdade: o cliente escreveu quando foi mas não deu uma data que dê para confiar ("há 2 anos",
@@ -88,6 +124,8 @@ export interface ItemSemData {
   // Só nas cirurgias que o cliente relatou: é o que deixa a tela escrever "Cirurgia ou internação: <texto>" sem adivinhar
   // pela fonte (tituloParaExibir).
   tipo?: TipoDoMarco;
+  cirurgiaDoCliente?: CirurgiaDoCliente;
+  confirmacaoExistente?: boolean;
 }
 
 // Uma resposta do cliente sobre o começo do quadro, com o rótulo exato da pergunta e o texto como ele escreveu. Nunca vira
@@ -283,3 +321,61 @@ export const TITULO_MYID_ULTIMO_REGISTRO = 'MyID (último registro)';
 export const DETALHE_MYID_ULTIMO_REGISTRO = 'Data do último registro; pode ser posterior à conclusão.';
 
 export const DETALHE_DATA_LIDA_DO_DOCUMENTO = 'Data lida automaticamente do documento; confira no arquivo.';
+
+// ── Confirmação do profissional (a data real de uma cirurgia que o cliente relatou) ────────────────────────────────────
+// A confirmação é UMA linha de historia_vida_paciente com esta marca no metadata. A leitura a reconhece só por ela.
+export const ORIGEM_CONFIRMACAO = 'confirmacao_de_marco';
+export const FONTE_DA_CONFIRMACAO = 'historico_clinico';
+// Outra versão no banco é lida como linha comum: a tela não adivinha o formato de um metadata que não conhece.
+export const VERSAO_DA_CONFIRMACAO = 1;
+// O profissional escolhe; nada vem pré-marcado. Os dois valores passam no CHECK de historia_vida_paciente.tipo.
+export const TIPOS_CONFIRMAVEIS = ['cirurgia', 'internacao'] as const;
+export type TipoConfirmavel = (typeof TIPOS_CONFIRMAVEIS)[number];
+export const LIMITE_DA_CHAVE_DE_CONFIRMACAO = 200;
+// O texto do cliente é copiado para a confirmação; passou disso a tela recusa em vez de cortar, porque cortar mudaria a
+// impressão digital e o relato nunca mais seria reconhecido.
+export const LIMITE_DO_RELATO_CONFIRMADO = 2000;
+export const LIMITE_DO_ANO_RELATADO = 100;
+
+// Apelidos das colunas que trazem, por caminho JSON do PostgREST, a marca e os dados da confirmação (sem baixar o metadata
+// inteiro). A leitura de useFontesClinicas pede exatamente estas colunas.
+export const CAMPO_CONFIRMACAO_ORIGEM = 'confirmacao_origem';
+export const CAMPO_CONFIRMACAO_VERSAO = 'confirmacao_versao';
+export const CAMPO_CONFIRMACAO_CHAVE = 'confirmacao_chave';
+export const CAMPO_CONFIRMACAO_PRECISAO = 'confirmacao_precisao';
+export const CAMPO_CONFIRMACAO_RELATO = 'confirmacao_relato';
+export const CAMPO_CONFIRMACAO_POR = 'confirmacao_por';
+export const COLUNAS_DA_CONFIRMACAO = [
+  `${CAMPO_CONFIRMACAO_ORIGEM}:metadata->>origem`,
+  `${CAMPO_CONFIRMACAO_VERSAO}:metadata->>versao`,
+  `${CAMPO_CONFIRMACAO_CHAVE}:metadata->>chave_cliente`,
+  `${CAMPO_CONFIRMACAO_PRECISAO}:metadata->>precisao`,
+  `${CAMPO_CONFIRMACAO_RELATO}:metadata->relato_cliente`,
+  `${CAMPO_CONFIRMACAO_POR}:metadata->confirmado_por`,
+].join(', ');
+
+// Escrita na descrição da linha para quem lê só a coluna (exportação, outra tela): a data guardada é o 1º de janeiro, mas só
+// o ano é conhecido.
+export const FRASE_SO_O_ANO = (ano: string) => `Data aproximada: só o ano (${ano}).`;
+
+// Para onde o foco volta depois de confirmar ou desfazer: o botão que abriu o diálogo deixa de existir (o marco muda), então o
+// foco vai ao título da seção, de onde o leitor de tela continua a leitura.
+export const ID_DO_TITULO_DA_LINHA_DO_TEMPO = 'titulo-linha-do-tempo-clinica';
+
+// Textos do selo do marco que o profissional confirmou: a DATA é dele, o RELATO continua sendo do cliente.
+export const SELO_DATA_CONFIRMADA = 'Data confirmada pelo profissional · texto do cliente';
+
+// Aviso FIXO do formulário (decisão do Rafael): a triagem de segurança dos planos roda no servidor e lê o historico_clinico como
+// o cliente escreveu: o ano de cada cirurgia (janela de 1 ano) e, por palavra-chave, o texto do tipo e das complicações. A
+// confirmação não entra nela e não mexe nesse histórico. Sempre visível, nunca bloqueia.
+export const AVISO_DA_TRIAGEM_DOS_PLANOS =
+  'A triagem de segurança dos planos continua usando o ano que o cliente escreveu. Esta confirmação não a altera.';
+
+// O que o profissional preenche no diálogo de confirmação.
+export interface DadosDaConfirmacao {
+  // 'cirurgia' ou 'internacao', escolhido por ele (nunca vem marcado de início); vazio é erro.
+  tipo: string;
+  precisao: PrecisaoDaData;
+  // O ano ("2022") ou a data completa ("2022-06-10"), como saiu do campo.
+  texto: string;
+}

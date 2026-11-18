@@ -1,4 +1,4 @@
-# Resumo Completo e Linha do tempo clínica (etapa 1)
+# Resumo Completo e Linha do tempo clínica (etapas 1 e 2)
 
 Pedido do Rafael: no perfil do paciente, aba **Avaliação > Clínico**, o cartão "Resumo Clínico" ganha uma **versão mais
 completa**, e ao lado entra uma **linha do tempo** com os marcos históricos do paciente, feitos a partir das respostas do
@@ -6,6 +6,10 @@ cliente no MyID, da avaliação presencial e dos outros formulários.
 
 Decisões do Rafael para esta etapa: **regra fixa, sem IA** (nenhuma chamada a IA, nenhuma edge function nova, nenhum dado de
 saúde enviado a provedor externo); **só o profissional vê**, no perfil do paciente; o cliente **não** vê nada disto.
+
+**Etapa 2:** o profissional pode **confirmar, com a data real, uma cirurgia ou internação que o cliente relatou**. É a única escrita
+ligada à linha do tempo, e tem uma seção própria: "Confirmar com a data real". O que a etapa 1 diz abaixo sobre "só leitura" vale para a
+tela e para o Completo; a escrita da etapa 2 mora num hook à parte.
 
 ## O que é
 
@@ -15,10 +19,12 @@ saúde enviado a provedor externo); **só o profissional vê**, no perfil do pac
 | **Completo** | mesmo cartão, seletor em "Completo" | **não**: só leitura, botão "Copiar" |
 | **Linha do tempo clínica** | cartão logo abaixo, na aba Clínico; sem avaliação por voz ela aparece sozinha | não |
 
-Tudo é **calculado na hora**. **Nada novo é gravado** pelo Completo nem pela linha do tempo: nem nota de prontuário, nem
-`historia_vida_paciente`, nem `avaliacoes_voz`, nem coluna nova; nenhuma migração. (A única gravação ligada a este assunto é o campo
-opcional "Data do diagnóstico" do **cartão de CID**, que é do cartão e não da linha do tempo: ver "A data do diagnóstico que o banco
-preenche sozinho".) O Completo e a linha do tempo **não passam** por
+Tudo é **calculado na hora**. O Completo e a linha do tempo **só leem**: não gravam nota de prontuário, `avaliacoes_voz` nem coluna
+nova, e nenhuma migração foi criada. **Há duas gravações ligadas a este assunto, e nenhuma delas é do Completo nem da tela da linha do
+tempo em si**: (1) o campo opcional "Data do diagnóstico" do **cartão de CID** (ver "A data do diagnóstico que o banco preenche
+sozinho"); (2) a **confirmação do profissional** (etapa 2, ver "Confirmar com a data real"): **uma linha nova** em
+`historia_vida_paciente`, gravada por um hook próprio (`useConfirmarMarcoClinico`) que a página liga à linha do tempo por props de
+função. A linha do tempo continua sem importar o cliente do banco e sem nenhuma palavra de escrita (um teste confere). O Completo e a linha do tempo **não passam** por
 `sincronizarProntuario`, `toggleConfirmacao`, `salvarEdicao` nem pela pré-confirmação, e **não são uma seção** de `SECOES`
 (`AvaliacaoSecoesEditaveis.tsx`): essas seções são pré-confirmadas e vão sozinhas ao prontuário, que o cliente pode ler.
 
@@ -32,17 +38,17 @@ Avisos fixos no Completo (na tela):
 ## De onde vem cada coisa
 
 Cada fonte é lida em separado (`src/hooks/useFontesClinicas.ts`, só `select`). Se uma falha, aparece "Não consegui ler ..." e as
-outras continuam. (Os achados do Avatar são uma leitura **à parte e só de contagem**, nunca uma fonte de marcos: ver "Aviso dos
+outras continuam. (A história de vida é lida em **duas leituras**, por causa das confirmações: ver "Como a linha do tempo lê".) (Os achados do Avatar são uma leitura **à parte e só de contagem**, nunca uma fonte de marcos: ver "Aviso dos
 achados do histórico".) A leitura das datas de conclusão do MyID (`avaliacoes_identidade`) também é uma fonte à parte: se falhar, o aviso
 diz "as datas de conclusão do MyID" e os MyIDs aparecem como "último registro".
 
 | Fonte | Vira | Origem / selo |
 | --- | --- | --- |
-| `pacientes.historico_clinico.cirurgias` (ano válido) | marco **fato**, só o ano | cliente: "Relatado pelo cliente, não revisado" |
+| `pacientes.historico_clinico.cirurgias` (ano válido) | marco **fato**, só o ano; **some da lista quando o profissional confirma a data real** (ver "Confirmar com a data real") | cliente: "Relatado pelo cliente, não revisado" |
 | `pacientes.historico_clinico.ultimo_envio` | marco **registro** ("Último envio do histórico clínico (pelo cliente)") | cliente |
 | `myid_avaliacoes` (status `concluido`) + `avaliacoes_identidade.created_at` ligada a ele | marco **registro** "MyID concluído" (data do histórico); sem a ligação, "MyID (último registro)" com `updated_at` e aviso | cliente |
 | `avaliacoes_voz` (só as do profissional, mesmo filtro da avaliação atual) | marco **registro** | profissional: "Registrado pelo profissional" |
-| `historia_vida_paciente.data_evento` | marco **fato** | profissional |
+| `historia_vida_paciente.data_evento` | marco **fato**. A linha que é uma **confirmação** (marca no `metadata`) lê a precisão do `metadata` e substitui o relato do cliente | profissional; a confirmação tem o selo próprio "Data confirmada pelo profissional · texto do cliente" |
 | `diagnosticos_paciente` **ativos** e do tipo **principal** ou **secundário**, com `data_diagnostico` válida (e, nas linhas criadas **antes de 18/11/2026**, **diferente do dia do cadastro**) | marco **fato** | profissional |
 | `exames_presenciais.data_exame` | marco **registro** | profissional |
 | `exames_importados` com `status = 'processado'` e `data_exame` válida | marco **registro**, com o aviso "Data lida automaticamente do documento; confira no arquivo." | profissional |
@@ -272,7 +278,8 @@ cirurgia mais acima, todas as chaves de baixo mudavam. O formulário do cliente 
 sem `id` (ou com `id` vazio ou que não é texto nem número; um número vira texto), e o segundo de dois itens com o **mesmo** `id` caem na posição
 (`historico_clinico:cirurgia:<posição>`, a posição no array original, contando itens-lixo do meio). O prefixo `id:` impede que um id só
 de números colida com a posição de outro item. Item sem `id` continua com a chave instável se o cliente apagar um item acima dele:
-corrigir isso exigiria gravar o id no histórico do cliente, o que esta etapa evita.
+corrigir isso exigiria gravar o id no histórico do cliente, o que esta etapa evita. (A **chave da confirmação** do item sem `id` é outra, e
+depende do conteúdo do item: ver "Confirmar com a data real". O id do marco não mudou.)
 
 ### Marcos que NÃO existem de propósito
 
@@ -385,10 +392,237 @@ como estão, sem botão.
   O teste de privacidade continua valendo e **não foi mexido**: a navegação entra na linha do tempo só por função recebida por prop; o hook que mexe na tela fica fora da camada
   pura e dos componentes da linha do tempo.
 
+## Confirmar com a data real (etapa 2: a única escrita da linha do tempo)
+
+Decisão do Rafael: o profissional pode **confirmar, com a data real, uma cirurgia ou internação que o CLIENTE relatou** no histórico
+clínico (`pacientes.historico_clinico`). A confirmação é **uma linha nova** em `historia_vida_paciente` (com `visivel_paciente = false`)
+que **substitui o relato do cliente na lista** e mostra "ver relato original". O que o cliente escreveu **nunca é apagado nem mudado**.
+O fluxo do cliente e as regras de free e premium (`docs/fluxo-cliente-e-tiers.md`) **não mudam**.
+
+### O que o profissional vê
+
+- **Botão "Confirmar com a data real"** (44 px) no relato de cirurgia do cliente, **no marco com ano válido e no item de "Sem data"**
+  ("03/2019", "há 2 anos", "2O22"). O item do cliente **sem `id`** também pode ser confirmado. **Não ganham o botão**: envio do histórico,
+  MyID, "Como começou", diagnóstico, exame, o registro do profissional e o relato cuja confirmação já existe (para refazer, desfaz e
+  confirma de novo). **Sem a função da página, nenhum botão** (nunca um botão que não leva a lugar nenhum). A **recepção não vê** o botão
+  (nem o "Desfazer"): `PacientePerfil` só passa as funções quando o papel na clínica já carregou e **não é `recepcao`** (modo solo,
+  dono e profissional liberam). Enquanto o papel carrega o botão também não aparece: chegar um instante depois é melhor do que
+  aparecer para quem não pode.
+- **O diálogo** (o diálogo mora na **página**, não nas seções da avaliação, que remontam a cada `savedAt` novo e levariam o texto digitado):
+  - o relato do cliente no topo, **inteiro** (sem `truncate` nem `line-clamp`), com o selo do cliente;
+  - **"Cirurgia" ou "Internação"** em chips de 44 px, **sem nada marcado de início** (não há lista de seleção);
+  - **"Sei o dia"** (campo de data, de 1900-01-01 até hoje) ou **"Só sei o ano"** (4 números, teclado numérico). O campo começa **vazio**:
+    nunca vem preenchido com o ano do cliente;
+  - **erro por texto** abaixo do campo (`role="alert"`, `aria-invalid`, `aria-describedby`) com as frases de `erroDaDataDigitada` e
+    "Ano inválido: use 4 números, de 1900 até o ano atual."; o ano só vira erro depois dos 4 números, de sair do campo ou de tentar
+    confirmar. Data no futuro, antes de 1900 e **antes do nascimento do cliente** são recusadas;
+  - **"Confirmar" fica desligado** enquanto o formulário é inválido ou está salvando ("Salvando…");
+  - **aviso suave** (não bloqueia) quando o ano informado difere de um ano válido que o cliente escreveu;
+  - **aviso FIXO da triagem** (veja abaixo), sempre visível;
+  - **Esc, X, "Cancelar" e toque fora** fecham direto só se nada foi escolhido ou digitado; senão perguntam "Descartar o que digitei?"
+    ("Continuar editando" mantém tudo). Enquanto salva, nada fecha;
+  - **erro do banco** aparece em texto (`role="alert"`) **e** em aviso (toast), com o diálogo aberto e o que foi digitado no lugar;
+  - **foco**: com erro de data, o foco vai ao campo e o campo rola para o meio da tela (`scrollIntoView({ block: 'center' })`), para o teclado
+    do celular não esconder o erro. O rodapé com os botões fica **dentro da área rolável** do diálogo (não fixo). Depois de salvar, o
+    foco vai ao **título da seção** (o botão que abriu o diálogo deixou de existir); ao cancelar, volta ao botão que abriu. Em "Continuar editando"
+    (a pergunta "Descartar o que digitei?" é um diálogo sem gatilho) o foco volta ao campo em que o profissional estava, ou ao primeiro campo se ele sumiu;
+  - **na saída o diálogo não esvazia**: o item pedido fica guardado só para o desenho durante a animação de fechar (200 ms), nos dois diálogos. Ao abrir de novo
+    vale o item novo, e a troca de paciente apaga o guardado;
+  - **texto do cliente comprido** (uma palavra de 100 letras sem espaço) não alarga a tela: os diálogos e o relato original quebram em qualquer ponto
+    (`overflow-wrap`) e cada filho da caixa, que é uma grade, tem `min-w-0`. Medido no celular de 390 px (a caixa e a página sem rolagem para o lado).
+- **Trocar de cliente com um diálogo aberto** (Voltar do navegador, Voltar do Android, link de notificação: a rota `/pacientes/:id` reaproveita a mesma página):
+  os dois diálogos (confirmar e desfazer) **somem e o estado e os erros são zerados**. Em duas camadas: o pedido guarda de qual paciente veio e só o do paciente
+  atual aparece; e gravar e apagar **recusam, sem escrever nada**, um pedido que não é do paciente atual ("Você abriu outro cliente depois de pedir esta
+  confirmação. Nada foi salvo. Peça a confirmação de novo no cliente certo."). Uma gravação que já estava em andamento termina no paciente em que começou.
+- **O marco confirmado** substitui o relato na lista, no filtro e em "Sem data": título como gravado, data pela precisão ("2022" ou
+  "10/06/2022"), o selo próprio **"Data confirmada pelo profissional · texto do cliente"** (a data é do profissional, o texto é do
+  cliente; o selo "Registrado pelo profissional" assinaria o que o cliente escreveu), **"Confirmado por você em dd/mm/aaaa"** (o dia do
+  Brasil de `created_at`; se `created_at` for ilegível a frase some, nunca uma data inventada), **"ver relato original"** (recolhível, 44 px,
+  `aria-expanded`/`aria-controls`; mostra **o texto guardado na confirmação, nunca o dado vivo**, com o ano exatamente como veio, "2O22" inclusive)
+  e **"Desfazer"**. O diálogo de desfazer abre com o foco em "Voltar".
+- **Situação** (`marco.confirmacao.situacao`): **igual** (o texto de hoje é o confirmado: o relato some); **alterado** (a chave bate e o
+  texto mudou: **os dois aparecem**, o relato do cliente continua na lista **sem** o botão de confirmar, e o marco confirmado ganha a nota
+  "O cliente mudou este item depois da confirmação; o relato atual também aparece na lista."); **apagado** (nenhum item do cliente tem
+  mais a chave: só o marco confirmado, com "O cliente apagou este item depois da confirmação.").
+
+### O que é gravado: o contrato da linha
+
+Um `insert` em `historia_vida_paciente`, montado por `montarLinhaDaConfirmacao` (`src/lib/resumoClinico/confirmacao.ts`, camada pura) e
+gravado **só** por `src/hooks/useConfirmarMarcoClinico.ts`:
+
+| Coluna | Valor |
+| --- | --- |
+| `id` | uuid **determinístico** (ver "Id determinístico") |
+| `terapeuta_id` | o profissional logado (`useAuth`); a RLS exige `auth.uid() = terapeuta_id` |
+| `paciente_id` | o paciente aberto |
+| `data_evento` | **sempre o texto "AAAA-MM-DD"** (nunca `Date`, nunca `toISOString`); "AAAA-01-01" quando só o ano é conhecido |
+| `tipo` | `cirurgia` ou `internacao`, o que o profissional escolheu (os dois passam no CHECK da tabela) |
+| `titulo` | o texto do cliente, aparado, **sem** o prefixo "Cirurgia ou internação: " (esse só existe na exibição) |
+| `descricao` | "Data aproximada: só o ano (AAAA)." quando a precisão é o ano; senão `null`. As complicações do cliente **não** vão para cá |
+| `sistema_corporal` | `null` (com valor a linha apareceria no Avatar) |
+| `severidade` | `0` |
+| `resolvido` | `true`, **explícito** (o padrão da coluna é `false` e a triagem local lê as linhas não resolvidas: é um fato passado) |
+| `visivel_paciente` | `false`, **explícito** (o padrão da coluna é `true`: é registro do profissional, o cliente não vê) |
+| `profissional_registro` | "Nome Sobrenome · CREFITO 12345-F" montado pelo app a partir do perfil; `null` sem CREFITO; nunca digitado |
+| `metadata` | o objeto abaixo |
+| `created_at`, `updated_at` | **não são enviados**: o servidor preenche, e `created_at` é o "quando" |
+
+**`metadata`** (todas as chaves escritas pelo hook): `versao` (número `1`; outra versão é lida como linha comum), `origem`
+(`'confirmacao_de_marco'`, a marca que a leitura e o desfazer usam), `fonte` (`'historico_clinico'`), `chave_cliente` (a chave de
+confirmação, ver abaixo; até 200 caracteres e sem caractere de controle), `relato_cliente` (`{ tipo, ano, complicacoes }`, os três
+**texto** como a leitura os vê: aparado, número vira texto; é o "relato original" e a base da impressão digital), `precisao` (`'ano'` ou
+`'dia'`) e `confirmado_por` (`{ nome, registro }`, uma foto de quem confirmou, porque o perfil muda depois). **Não** grava `confirmado_em`:
+o relógio do navegador é falsificável e repetiria `created_at`.
+
+Limites: tipo + complicações do cliente **até 2000 letras** e o campo "ano" do cliente **até 100 letras**. Acima disso o app **recusa
+confirmar, com a frase explicando** (não corta: cortar mudaria a impressão digital e o relato nunca mais seria reconhecido).
+
+### Chave de confirmação, impressão digital e substituição
+
+- **Chave de confirmação** (`chaveDaConfirmacao`, vai só em `metadata.chave_cliente`, **nunca** vira o id do marco): item **com `id`** (e o `id`
+  aparecendo pela primeira vez) usa `historico_clinico:cirurgia:id:<id>`, a mesma chave do marco. Item **sem `id`** (ou com `id` repetido)
+  usa `historico_clinico:cirurgia:pos:<posição>:<16 letras do SHA-256 da impressão>`: **depende do conteúdo**, então, se o cliente apagar
+  um item acima, a posição muda, a chave deixa de bater com a confirmação de outro item e **nenhuma confirmação esconde a cirurgia errada**.
+  O custo: nesses itens, se o cliente editar o texto, a confirmação antiga vira "apagada" e o relato novo aparece com o botão.
+  A chave só vale junto com `paciente_id` e `terapeuta_id`. Os ids e a ordem dos marcos que já existiam **não mudaram**.
+- **Impressão digital** (`impressaoDoRelato`): o JSON de `[tipo, ano, complicações]`, os três aparados. O relato do cliente **só sai da lista
+  se a chave E a impressão de hoje forem iguais às da confirmação**: o cliente edita o próprio histórico a qualquer hora (o formulário regrava os
+  itens no autosave), e a chave sozinha não prova que o texto é o mesmo.
+- **Só a confirmação VÁLIDA substitui**: se `data_evento` não passa pela mesma régua da linha do tempo (inexistente, antes de 1900 ou no
+  futuro), a linha vai para "registros que ficaram de fora" e **o relato do cliente continua à vista**.
+- **Duas linhas com a mesma chave** (não deveria existir: o id é fixo): vale a **mais antiga** (`created_at`, depois `id`); a outra aparece como marco comum.
+
+### Precisão da data
+
+Duas precisões na v1: **"ano"** e **"dia"** (mês ficou de fora). **Só `metadata.precisao` decide**, e só o texto exato `'ano'` vale: ausente,
+"Ano", número ou objeto são "dia", como toda linha de história de vida sempre foi lida; **a precisão nunca é adivinhada pelo "-01-01"**
+(um 1º de janeiro de verdade existe: `2022-01-01` sem marca continua "01/01/2022"). Com precisão "ano" a leitura corta para o ano mesmo que
+`data_evento` traga o dia (`dataDaHistoriaDeVida`): a tela nunca mostra mais do que a precisão diz. Na ordem, "2022" fica **abaixo** de
+"10/06/2022" no mesmo ano (comparação do texto ISO; `compararMarcos` não mudou) e o marco só com ano fica **na posição do relato que substituiu**.
+**A frase "Data aproximada: só o ano (AAAA)." existe para quem lê só a coluna** (a exportação CSV, outra tela no futuro); na linha do tempo
+ela é omitida do detalhe, porque a data já mostra só o ano. O Avatar não mostra a linha (`sistema_corporal` é `null`). O corte de 18/11/2026
+do diagnóstico **não se aplica**: `data_evento` é `NOT NULL` sem padrão, o banco nunca a preenche sozinho. "Hoje" é o dia do Brasil
+(`hojeLocalISO()`), **lido na hora de salvar** (o diálogo pode ficar aberto de um dia para o outro).
+
+### Id determinístico (a chave primária é a trava contra duplicar)
+
+`idDaConfirmacao(terapeuta, paciente, chave)` é um hash **SHA-256 escrito à mão** (sem `crypto.subtle`, que só existe em contexto seguro e muda entre
+WebViews), com os **primeiros 128 bits** em 8-4-4-4-12, nibble de versão 4 e de variante 8 a b. Mudar o profissional, o paciente ou a chave **muda o id**
+(o profissional entra na conta para a confirmação de um não travar a de outro). Efeito: duplo toque, duas abas e reenvio de rede tentam o **mesmo id**
+e o banco recusa o segundo (**23505**), sem ler antes e sem índice único novo. Além disso o botão e o diálogo travam enquanto grava e há uma **trava
+por `ref`** (o segundo toque no mesmo instante passa antes de a tela redesenhar o botão desligado). Testes: vetores do NIST ("abc", vazio, a mensagem
+de 448 bits, um milhão de "a") e comparação com `node:crypto` em centenas de entradas (acentos, emoji).
+
+**Como o hook trata o que o banco responde** (`useConfirmarMarcoClinico`):
+
+- **23505** (já existe): invalida, relê e, se a confirmação **aparece na lista**, é sucesso ("Este item já estava confirmado..."). Se **continua fora da
+  lista**, um `select` por id diz se ela existe: a frase é **"Já existe uma confirmação para este item, mas a tela não conseguiu carregá-la."**
+  (e, se nem o `select` a acha, a falha comum). Nunca se finge sucesso.
+- **PGRST204 e 42703** (coluna que o banco não conhece: o app subiu antes da tabela estar pronta): **"O banco ainda não está preparado para esta
+  confirmação."**, sem mandar tentar de novo. **42501**: frase de falta de permissão. Qualquer outro erro, ou o client que lança por falta de rede:
+  "Não deu para salvar a confirmação. Confira a conexão e tente de novo."
+- **Só o sucesso invalida** `invalidarFontesClinicas` e `['historia-vida-avatar', paciente]`; com erro do banco, **nada** é invalidado.
+- Sem usuário ou sem paciente: **nenhuma operação**, só a frase pedindo para sair e entrar de novo.
+
+### Desfazer: apaga de vez, sem rastro
+
+O "Desfazer" **apaga** a linha (decisão do Rafael): `delete` com **as quatro condições** (`id`, `paciente_id`, `terapeuta_id` e `metadata->>origem =
+'confirmacao_de_marco'`) e `.select('id')`. Só essa linha; **nunca** por chave sem id, nunca em lote e **nunca um registro de história de vida feito à
+mão** (a marca de origem protege). **Nenhuma linha apagada não é erro**, mas a frase é "A confirmação já não existe." (nunca "desfeito") e a tela relê
+para mostrar a verdade; erro do banco aparece no aviso, que continua aberto, e **não invalida nada**. Depois de apagar, o relato do cliente volta como
+"Relatado pelo cliente, não revisado" e confirmar de novo gera o mesmo id e funciona.
+
+**Importante, com todas as letras:** **o registro apagado não pode ser recuperado nem provado.** Não fica rastro de quem desfez, de quando, nem de que
+a confirmação existiu: a auditoria da confirmação (`created_at`, `confirmado_por`) some junto. **A guarda de prontuário por profissionais segue
+pendente com o jurídico** (o prazo, a base legal e o que o cliente pode pedir de volta; ver "Decisões de produto" em
+`docs/fluxo-cliente-e-tiers.md`, que **não foi alterado**). Se o jurídico entender que a confirmação é peça de prontuário, a saída **sem migração**
+é marcar `metadata.desfeito = true` em vez de apagar (a leitura ignoraria a linha), mas isso muda o que o Rafael aprovou: só com decisão dele.
+
+### Aviso fixo da triagem de segurança dos planos
+
+Decisão do Rafael: o formulário mostra **sempre**, sem bloquear: **"A triagem de segurança dos planos continua usando o ano que o cliente escreveu.
+Esta confirmação não a altera."** Motivo: a triagem roda **no servidor** (`supabase/functions/_shared/triagem-bloqueio.ts`), lê o histórico clínico do
+cliente do jeito que ele escreveu: **o ano de cada cirurgia** (a cirurgia "recente" conta numa janela de 1 ano) **e também uma varredura por palavra-chave
+no texto do tipo e das complicações** ("cirurgia recente", "pós-operatório"...). Ela **não lê `historia_vida_paciente`**. Confirmar a data real **não muda**
+o que a triagem vê. O texto que o profissional lê na tela diz só que ela "continua usando o ano que o cliente escreveu" e está certo (a confirmação não altera nada
+do que ela lê). Mudar isso é **etapa própria** (a edge function teria de ler a tabela com service role); esta etapa não mexe em
+`supabase/functions`. Nenhum texto da tela diz que a triagem mudou.
+
+### Como a linha do tempo lê (duas leituras da história de vida)
+
+`useFontesClinicas` pede a história de vida **em duas leituras, só `select`**: os 50 mais recentes (limite + 1 = **51**) e, à parte, **só as confirmações**
+(`metadata->>origem = 'confirmacao_de_marco'`, limite próprio **200**, pedido 201), juntadas **sem repetir o `id`**. Assim uma confirmação antiga nunca cai
+fora do corte de 50. As colunas da marca vêm **por caminho JSON com apelido** (`confirmacao_origem:metadata->>origem`, `confirmacao_chave`,
+`confirmacao_precisao`, `confirmacao_relato:metadata->relato_cliente`, `confirmacao_por:metadata->confirmado_por`...), sem `*` e sem baixar o `metadata`
+inteiro, mais `created_at`. O aviso de corte é o da primeira leitura. **Se uma das duas leituras falhar, a fonte "história de vida" inteira cai em
+"Não consegui ler ..."** (as outras fontes seguem): sem a confirmação o relato do cliente voltaria à lista como "não revisado" sem ninguém saber por quê.
+Por isso os testes que fixavam "um único `select` com limite 51" (`useFontesClinicas.test.tsx`) agora esperam **`[51, 201]`** para `historia_vida_paciente`:
+foi uma mudança consciente, e o resto da suíte seguiu verde sem outra alteração.
+
+### Quem lê a tabela `historia_vida_paciente` (cuidado no futuro)
+
+- **A RLS é `auth.uid() = terapeuta_id`**: só o próprio profissional lê e escreve; o paciente do portal **não** lê a linha.
+- **Qualquer política futura de leitura do paciente (portal) nesta tabela DEVE filtrar `visivel_paciente = true`.** O padrão da coluna é `true`; a
+  confirmação grava `false` explícito. Uma política que esquecesse o filtro mostraria ao cliente o registro do profissional.
+- **`ExportarDados` leva o `metadata` inteiro** (é um `SELECT *` por tabela, do próprio profissional, protegido pela RLS e pela rota de
+  profissional): o CSV traz o relato original, a precisão e quem confirmou. Quem usar esse arquivo precisa saber disso.
+- O **Resumo Completo** não muda: continua listando a cirurgia como relato do cliente.
+
+### Limites e decisões desta etapa (revisão dos conferentes)
+
+- **A regra "recepção não confirma" é regra de TELA e falha aberta.** `PacientePerfil` só passa as funções quando `useClinicaContext` diz que o papel não é
+  `recepcao`. Se esse hook não conseguir carregar o vínculo (consulta de `clinica_membros` falhou ou não achou), ele cai no **modo solo** (papel indefinido,
+  carregamento terminado) e o botão **aparece**. A RLS do banco só confere `auth.uid() = terapeuta_id`: **não olha papel** nem se o paciente é do profissional.
+  Uma recepcionista nessa situação consegue gravar uma linha com o próprio id; a linha **só fica visível para quem a criou** (a RLS de leitura é a mesma), então
+  não há vazamento nem estrago no prontuário de outro profissional. É o comportamento herdado do `useClinicaContext` (a consulta que falha devolve o erro como
+  `data` vazio, sem lançar, e o hook segue para o modo solo); fechar de verdade pede uma regra de papel no banco, que é decisão de outra etapa (esta não mexe em `supabase/`).
+- **O erro de tipo ausente (`role="alert"`) e o foco no primeiro chip só existem para envio programático.** Num navegador o botão "Confirmar" fica **desligado**
+  enquanto falta o tipo ou a data válida, e o Enter não envia formulário com o botão padrão desligado. O que o usuário vê é a frase fixa de ajuda ("Escolha cirurgia ou
+  internação e informe uma data válida para confirmar."), sem `role`. Os testes que chamam `fireEvent.submit` exercitam o ramo; não o confunda com o que a pessoa vê.
+- **Abrir o perfil dispara 2 consultas a mais** (`clinicas` e `clinica_membros`; o dono de clínica só faz a primeira), porque `useClinicaContext` guarda o resultado em
+  `useState` e **não usa o cache do React Query**: cada abertura do perfil pergunta de novo. Custo aceito para saber o papel; uma etapa futura pode pôr esse hook em cache.
+- **Se a segunda leitura da história de vida (as confirmações) falhar, a fonte inteira cai com aviso** ("Não consegui ler a história de vida"; as outras fontes
+  seguem). **Decisão registrada (C1):** sem a confirmação o relato do cliente voltaria à lista como "não revisado" sem ninguém saber por quê. O custo é que os
+  eventos de vida comuns (fratura, trauma) também somem da linha do tempo enquanto durar a falha. Dois testes de `useFontesClinicas.test.tsx` fixam essa escolha.
+- **Um marco confirmado como "Internação" passa a aparecer em "Eventos de vida" no filtro, e não em "Cirurgias e diagnósticos" (C2).** O tipo `internacao` da
+  história de vida entra como `evento_de_vida` (regra antiga); o relato do cliente que ele substitui era `cirurgia`. Em "Tudo" continua. Quem confirmar como "Cirurgia"
+  não vê mudança de categoria. Está coberto por teste (`resumoClinicoConfirmacao.test.ts`).
+- **Com rede muito lenta, trocar de paciente durante a gravação do anterior faz o primeiro toque em "Confirmar com a data real" do paciente novo ser ignorado, sem aviso,**
+  até a gravação terminar. A trava contra duplo toque é uma só por hook, e não por paciente. Nada é gravado errado: é um toque perdido (o segundo funciona).
+- **Ao fechar o diálogo de confirmação o formulário zera durante os 200 ms da animação de saída.** A caixa não encolhe (o que se vê é só o zoom do Radix), mas a altura
+  de layout pode dar um salto de um quadro. Cosmético, aceito.
+- **A troca de paciente zera os diálogos (F1):** ver "O que o profissional vê". Sem isso o Confirmar gravava a cirurgia do cliente A no prontuário do cliente B (provado
+  com teste antes da correção).
+
+### Roteiro manual de conferência (depois de publicar)
+
+Os testes usam um banco falso: ele **não** emula coluna, CHECK nem RLS do Postgres, e o jsdom **não** mostra o teclado do celular. O teste estático
+`marcoConfirmadoGravacao.test.ts` lê a migração `20260614230000_historia_vida_paciente.sql` (a tabela real tem `metadata` e `visivel_paciente`, conferidos
+em leitura; **esta etapa não cria migração**) e confere que cada chave gravada existe como coluna e que o tipo está no CHECK. O resto fica para a mão:
+
+1. **Confirmar.** No perfil de um paciente com uma cirurgia relatada pelo cliente, aba Avaliação > Linha do tempo: "Confirmar com a data real", escolher
+   "Cirurgia", "Só sei o ano", digitar o ano e confirmar. Esperado: o relato do cliente some, o marco aparece com o selo "Data confirmada pelo profissional ·
+   texto do cliente", "Confirmado por você em" com o dia de hoje, "ver relato original" mostra o texto do cliente. Repetir com "Sei o dia" e com um item de "Sem data".
+2. **O paciente do portal não vê.** Entrar no portal com a conta do cliente desse paciente: **nenhum** sinal da confirmação em lugar nenhum. (Se for possível ao
+   suporte, conferir no banco que a linha tem `visivel_paciente = false`, `resolvido = true`, `sistema_corporal` nulo.)
+3. **Desfazer.** "Desfazer" no marco confirmado > "Desfazer confirmação": o relato do cliente volta como "Relatado pelo cliente, não revisado" e o botão de
+   confirmar volta. Confirmar de novo deve funcionar (mesmo id).
+4. **Duas abas.** Abrir o mesmo paciente em duas abas, confirmar na primeira e confirmar o mesmo item na segunda sem recarregar: a segunda diz que o item já
+   estava confirmado (23505) e a lista atualiza.
+5. **Recepção.** Entrar com uma conta de recepção de uma clínica: nenhum botão "Confirmar com a data real" nem "Desfazer" (é regra de tela e falha aberta: ver "Limites e
+   decisões desta etapa").
+6. **Trocar de cliente.** Abrir "Confirmar com a data real" no cliente A e usar o Voltar do navegador (ou do Android) para o cliente B: o diálogo some e nada é gravado.
+7. **O teclado, em aparelho real (iPhone e Android).** Abrir o diálogo, tocar no campo de ano, digitar "2O22" (com a letra O): o erro deve ficar **visível
+   acima do teclado**, o campo no meio da tela e os botões alcançáveis rolando o diálogo. Conferir os 44 px, a largura de 390 px **sem rolagem para o lado** e o
+   modo escuro.
+
 ## Selos de origem
 
 - O que veio do **cliente** leva **"Relatado pelo cliente, não revisado"**; o que o **profissional** registrou leva **"Registrado
   pelo profissional"**. Nunca o contrário (um teste confere todos os marcos).
+- Um **terceiro visual**, só no marco que o profissional confirmou: **"Data confirmada pelo profissional · texto do cliente"** (`SeloDeOrigem` com
+  `dataConfirmada`, `data-selo="data-confirmada"`). O tipo `OrigemDoDado` continua só com `cliente` e `profissional`; o marco confirmado tem origem
+  `profissional` e `revisado = true`, e o selo diz de quem é a data e de quem é o texto.
 - No Completo, o **texto editado à mão pelo profissional** na tela da avaliação ganha a nota **"Editado pelo profissional"** (no
   texto copiado: "(editado pelo profissional)").
 
@@ -407,26 +641,37 @@ seções que ele usa **e que a tela deixa editar**: `dor` (chave `dor`), `funcio
 - Valem as edições feitas na própria sessão (o estado da tela), mesmo antes de a avaliação ser relida do banco.
 - Só **lê** o mesmo dado: não reescreve a lógica da tela e não grava nada.
 
-## Duplicidade: o mesmo fato do cliente e do profissional aparece duas vezes, de propósito
+## Duplicidade: o mesmo fato do cliente e do profissional aparece duas vezes, de propósito (sem vínculo)
 
-Se o cliente relata uma cirurgia no histórico clínico e o profissional registra a mesma cirurgia na história de vida, a linha do
-tempo mostra **dois marcos**, cada um com o seu selo (e, em geral, com precisões diferentes: o ano que o cliente escreveu e o dia
-que o profissional registrou). **Não há deduplicação.** Juntar os dois esconderia justamente a divergência, que é o que o
-profissional precisa enxergar para conferir com o cliente. Um teste registra essa decisão.
+Se o cliente relata uma cirurgia no histórico clínico e o profissional registra a mesma cirurgia na história de vida **por conta
+própria**, a linha do tempo mostra **dois marcos**, cada um com o seu selo (e, em geral, com precisões diferentes: o ano que o
+cliente escreveu e o dia que o profissional registrou). **Sem vínculo entre os dois, não há deduplicação.** Juntar os dois esconderia
+justamente a divergência, que é o que o profissional precisa enxergar para conferir com o cliente. Um teste registra essa decisão.
+
+**A única exceção é a confirmação** (etapa 2): a linha de história de vida com a **marca de confirmação** (`metadata.origem =
+'confirmacao_de_marco'`), com a chave do item e com a **impressão digital do texto igual** à de hoje, **substitui** o relato do cliente
+(no marco e em "Sem data"). Chave igual com impressão diferente mostra **os dois**, com aviso. Ver "Confirmar com a data real".
 
 ## O que NÃO faz
 
-- Não usa IA, não grava nada, não entra no prontuário nem no "Sincronizado".
+- Não usa IA, não entra no prontuário nem no "Sincronizado". **Não grava nada por conta própria**: a única escrita da linha do tempo
+  é a confirmação do profissional (e o desfazer dela), feita só pelo hook `useConfirmarMarcoClinico`, depois de um toque dele, e nunca
+  em `pacientes`, `notas_prontuario` nem `avaliacoes_voz`.
 - Não mostra hipóteses diagnósticas nem red flags no Completo (ficam na aba Quadro/Dx; um texto copiado poderia ser lido como
   diagnóstico). Não mostra o plano. Pelo mesmo motivo, diagnóstico do tipo "suspeita" não vira marco.
 - Não classifica ("normal", "alterado", "bom", "ruim") nem interpreta; não reescreve o texto do cliente (aparece inteiro, sem
   corte, com quebra de linha).
 - Não lê campos antigos do MyID (`bloco_1_date`, `bloco1.data_inicio_dor`), que a tela atual do cliente não grava.
-- Não toca no portal do cliente (`src/pages/paciente/*`) e não muda a visibilidade das notas. Um teste estático confere que os
-  arquivos novos não usam `console`, `localStorage`, `sessionStorage`, `document.cookie`, `indexedDB`, `fetch`, `XMLHttpRequest`,
+- Não toca no portal do cliente (`src/pages/paciente/*`) e não muda a visibilidade das notas. A linha da confirmação grava
+  `visivel_paciente = false`. Um teste estático confere que os
+  arquivos novos da linha do tempo não usam `console`, `localStorage`, `sessionStorage`, `document.cookie`, `indexedDB`, `fetch`, `XMLHttpRequest`,
   `WebSocket`, `sendBeacon`, `new Image(`, `window.open`, `.insert(`, `.update(`, `.upsert(`, `.delete(`, `.rpc(`, `functions.invoke`,
-  nem importam `src/pages/paciente` ou apontam para rotas `/paciente` do portal; e que só o hook importa o client do Supabase (a camada
-  pura e as telas não).
+  nem importam `src/pages/paciente` ou apontam para rotas `/paciente` do portal; e que só `useFontesClinicas` importa o client do Supabase
+  (a camada pura e as telas não). O hook que grava (`useConfirmarMarcoClinico`) fica **fora** das pastas vigiadas por esse teste, de
+  propósito, e tem o próprio teste estático (`marcoConfirmadoGravacao.test.ts`).
+- Não muda o **Resumo Completo**: ele lê `pacientes.historico_clinico` direto e **continua listando a cirurgia como relato do cliente**,
+  mesmo depois de confirmada. A confirmação só vale na linha do tempo.
+- Não muda a **triagem de segurança dos planos** (ver o aviso em "Confirmar com a data real").
 - Não religa `useTimelineCompleta`, `TimelineVidaCompleta`, `TimelineUnificada` nem `ResumoNarrativo` (outras abas).
 
 ## Tela
@@ -518,7 +763,8 @@ depois dos 30 s do `staleTime`, para o profissional que editou em outra aba ou t
 | `exames_importados` | importar (função `import-exame`) e apagar | `ImportarExameCard.tsx` |
 | `testes_funcionais_paciente` | registrar e apagar | `TestesFuncionaisCard.tsx` |
 | `escalas_psicologia` | salvar a escala | `EscalasPsicologiaCard.tsx` |
-| `historia_vida_paciente` | adicionar e remover | `hooks/useTimelineCompleta.ts` (`useHistoriaVidaMutation`) |
+| `historia_vida_paciente` | confirmar com a data real e desfazer a confirmação (invalida também `['historia-vida-avatar', paciente]`) | `hooks/useConfirmarMarcoClinico.ts` (liga em `PacientePerfil.tsx`) |
+| `historia_vida_paciente` | adicionar e remover (**código morto**: só o `TimelineVidaCompleta` usa `useHistoriaVidaMutation` e nenhuma tela importa esse componente; não há escritor vivo além do da confirmação) | `hooks/useTimelineCompleta.ts` |
 | `avaliacoes_voz` | gravar a avaliação (insert ou update) | `VoiceAssessment.tsx` |
 | `avaliacoes_voz` | excluir pelo histórico | `AvaliacoesVozHistorico.tsx` |
 | `avaliacoes_voz` | excluir a avaliação atual, reprocessar o complemento e as outras rotas que usam `invalidarCachesAvaliacaoVoz` | `utils/voiceAssessment/reprocessarComplemento.ts` |
@@ -587,7 +833,8 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
   editor do lápis**: durante a edição o seletor some (o editor ocupa o lugar do cartão) e, ao salvar ou cancelar, o cartão volta em
   "Resumo", mesmo que o profissional estivesse no Completo. Um teste registra esse comportamento.
 - Só entram no resumo e na linha do tempo o MyID **concluído** mais recente (respostas) e até 20 MyIDs (marcos); as avaliações
-  presenciais até 20; história de vida, exames presenciais, testes funcionais, escalas e vínculos do MyID até 50 linhas.
+  presenciais até 20; história de vida, exames presenciais, testes funcionais, escalas e vínculos do MyID até 50 linhas (a história de vida
+lê, **além disso**, as confirmações do profissional, até 200, para uma confirmação antiga nunca cair fora do corte).
 - **Diagnósticos e exames importados leem até 200 linhas**, ordenados por data mais recente primeiro e **com os sem data por último**.
   Acima disso saem primeiro as linhas sem data (a faixa "Sem data" pode ficar incompleta) e depois as de data mais antiga. Subir mais
   o limite pesaria a leitura de todo perfil aberto.
@@ -601,6 +848,9 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
 - O diagnóstico criado **antes de 18/11/2026** cuja data real coincide por acaso com o dia do cadastro vai para "Sem data" (ver "A data
   do diagnóstico que o banco preenche sozinho"). Depois do corte, a data (ou o vazio) é do profissional e vale.
 - "MyID concluído" só aparece com a ligação ao histórico (`avaliacoes_identidade`); sem ela, "MyID (último registro)".
+- **Confirmação do profissional**: só vale para a **cirurgia ou internação do histórico clínico do cliente**, com precisão de **dia ou ano** (mês ficou de fora);
+  recusa relato de mais de 2000 letras (tipo + complicações) ou ano de mais de 100 letras; **desfazer apaga de vez** (não há rastro nem como provar que
+  existiu: ver "Desfazer: apaga de vez, sem rastro"); a confirmação **não muda** o Resumo Completo nem a triagem de segurança dos planos.
 
 ## Onde está no código
 
@@ -610,9 +860,16 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
 - Regra da fila de revisão do Avatar (única, pura): `src/lib/avatar/filaDeRevisao.ts`, usada por `AvatarClinicoCard.tsx` e pela leitura
   da contagem. Caminho até o Avatar: `src/lib/avatar/irParaOAvatar.ts` (`visaoGeralMostraOAvatar`, `subAbaInicialDaVisaoGeral`).
 - Telas: `src/components/resumoClinico/` (`ResumoClinicoVisoes`, `ResumoCompleto`, `LinhaDoTempoClinica`, `ComoComecouCard`,
-  `FiltroDeMarcos`, `RegistrosDeFora`, `SeloDeOrigem`, `AvisoDeFalhas`, `AvisoDosAchadosDoHistorico`). Lógica de exibição sem React: `exibicao.ts` (título, rótulo do
+  `FiltroDeMarcos`, `RegistrosDeFora`, `SeloDeOrigem`, `AvisoDeFalhas`, `AvisoDosAchadosDoHistorico`, e da etapa 2 `ConfirmarMarcoDialog` e
+  `DesfazerMarcoDialog`, que são **só apresentação**: sem Supabase e sem escrita). Lógica de exibição sem React: `exibicao.ts` (título, rótulo do
   tipo, detalhe) e `filtros.ts` (categorias e chips).
-- Escrita da data do diagnóstico (a única parte desta etapa que grava, e só pelo profissional): `src/components/medicina/DiagnosticosCID10Card.tsx`
+- **Confirmar com a data real (etapa 2)**: a camada pura é `src/lib/resumoClinico/confirmacao.ts` (SHA-256, `idDaConfirmacao`, `impressaoDoRelato`,
+  `chaveDaConfirmacao`, `lerConfirmacao`, `validarDataConfirmada`, `montarLinhaDaConfirmacao`), com tipos e constantes em `tipos.ts` e `dataDaHistoriaDeVida`/
+  `lerPrecisao` em `datas.ts`; a substituição do relato está em `marcos.ts`; a leitura em duas partes, em `useFontesClinicas.ts`; **o único escritor** é
+  `src/hooks/useConfirmarMarcoClinico.ts` (usa `tabela()` de `src/lib/dosagem/db.ts`, porque `types.ts` não lista `metadata` nem `visivel_paciente`; sem
+  `ts-ignore`), chamado em `PacientePerfil.tsx` antes de qualquer retorno condicional; as funções `onConfirmarMarco`/`onDesfazerMarco` descem pelo mesmo
+  caminho do `onAbrirRegistro` (`AvaliacaoVozAtual` nos três pontos e `AvaliacaoSecoesEditaveis`); os dois diálogos ficam na página.
+- Escrita da data do diagnóstico (a outra parte que grava, e só pelo profissional): `src/components/medicina/DiagnosticosCID10Card.tsx`
   (a camada pura da linha do tempo continua sem escrever nada; o corte e as funções de data ficam em `tipos.ts` e `datas.ts`).
 - Botão "Abrir o Avatar" (só passa uma função e um pedido): `PacientePerfil.tsx`, `AvaliacaoVozAtual.tsx`, `AvaliacaoSecoesEditaveis.tsx`,
   `PacienteDashboardIdentidade.tsx` e `PatientIntegratedDashboard.tsx`.
@@ -622,7 +879,9 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
 - Encaixe (poucas linhas): `AvaliacaoSecoesEditaveis.tsx` (o cartão do Resumo passa pelo seletor; a linha do tempo entra no fim
   da aba Clínico) e `AvaliacaoVozAtual.tsx` (sem avaliação por voz, ou com a gravação ainda aberta, a linha do tempo aparece).
 - Banco falso dos testes: `src/test/helpers/bancoFalso.ts` ganhou projeção de coluna jsonb com apelido
-  (`origem:resultado->_meta->>origem`), como o PostgREST; é aditivo e tem teste em `src/test/bancoFalso.test.ts`.
+  (`origem:resultado->_meta->>origem`), como o PostgREST; é aditivo e tem teste em `src/test/bancoFalso.test.ts`. Na etapa 2 ganhou, também só
+  aditivo: filtro `eq`/`not` por caminho jsonb (`metadata->>origem`), `delete` com `.select()` que devolve as linhas removidas, `insert` com id repetido
+  que devolve o erro `23505`, código opcional na falha simulada (`PGRST204`, `42501`) e `padroesNoInsert` (o `created_at` que o servidor preencheria).
 - Testes: `src/test/resumoClinico*.test.ts(x)` (marcos, datas, completo, leitura, tela, privacidade) e
   `src/test/useFontesClinicas.test.tsx`. As regras da data do diagnóstico, da data do exame importado e da data do MyID estão em
   `resumoClinicoMarcos.test.ts` e `resumoClinicoDatas.test.ts`; o limite de 200, o aviso de corte, a escolha do MyID por `created_at`,
@@ -635,6 +894,20 @@ Três ajustes na cadeia de uma reavaliação (os testes estão em `dadosEpidemio
   `resumoClinicoDataExplicitaDoDiagnostico.test.ts`; o campo "Data do diagnóstico" do cartão de CID (adicionar sem data envia `null`,
   com data envia a data, data no futuro recusada, informar/corrigir/limpar com `update` só no diagnóstico certo, erro do banco com toast
   e sem invalidar), em `diagnosticosCID10Card.test.tsx`.
+
+Os testes da confirmação (etapa 2): a camada pura (SHA-256 contra `node:crypto`, id, chave, impressão, validação, linha gravada, leitura tolerante, contrato com a
+migração) em `confirmacaoPuraDados.test.ts`, que roda também com `TZ=America/Sao_Paulo`, `UTC` e `Pacific/Kiritimati`; a substituição no marco e em "Sem data",
+igual/alterado/apagado, duplicatas, data inválida e ordem, em `resumoClinicoConfirmacao.test.ts`; as duas leituras da história de vida, em `useFontesClinicas.test.tsx`;
+o hook (payload exato, 23505, PGRST204 e 42703, delete com os quatro filtros, 0 linhas, duplo toque, sem usuário, só o sucesso invalida, o foco), em
+`confirmarMarcoClinicoHook.test.tsx`; os dois diálogos (campos, validações, foco, descartar, aviso fixo, 2000 letras, 44 px, modo escuro), em
+`confirmarMarcoDialog.test.tsx`; a linha do tempo (botão, selos, "ver relato original", alterado, apagado, Desfazer, as três formas da aba), em
+`resumoClinicoConfirmarMarcoTela.test.tsx`; a página do perfil de verdade (clicar, preencher, ver o insert, desfazer, recepção, o texto digitado que sobrevive à remontagem
+das seções, o diálogo que não esvazia na saída), em `perfilConfirmarMarco.test.tsx`; o foco depois de "Continuar editando", em `confirmarMarcoDialogFoco.test.tsx`; a troca de
+paciente com o diálogo de confirmar ou de desfazer aberto (no hook e na página de verdade, com a segunda camada que recusa gravar e apagar), em
+`confirmarMarcoTrocaDePacienteHook.test.tsx` e `confirmarMarcoTrocaDePacientePagina.test.tsx` (a animação de saída do Radix é simulada por
+`src/test/helpers/animacaoDeSaida.ts`, porque o jsdom não anima); e o contrato estático (lê a migração e o texto do hook e da página), em `marcoConfirmadoGravacao.test.ts`.
+O teste de privacidade (`resumoClinicoPrivacidade.test.ts`) **não foi alterado**: o hook novo fica fora das pastas que ele vigia, de propósito, e os dois diálogos e a
+camada pura entram na conferência dele sozinhos.
 
 Os testes do aviso dos achados: a regra da fila (matriz de casos, comparação com o código antigo do Avatar, uso único) em
 `avatarFilaDeRevisao.test.ts`; o Avatar montado de verdade, igual antes e depois da troca, em `avatarFilaDeRevisaoTela.test.tsx`; a leitura

@@ -12,15 +12,22 @@ export interface Operacao {
   filtros: Array<[string, ...unknown[]]>;
 }
 
+// Erro como o PostgREST devolve; `code` só existe nos erros que o banco numera (23505 = chave repetida).
+export interface ErroDoBanco {
+  message: string;
+  code?: string;
+}
+
 export interface BancoFalso {
   from: (tabela: string) => unknown;
   // Função do banco (supabase.rpc). Registrada como operação de escrita; o nome vai em `tabela`.
-  rpc: (nome: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc: (nome: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: ErroDoBanco | null }>;
   tabelas: Record<string, Linha[]>;
   operacoes: Operacao[];
   escritas: () => Operacao[];
-  // Faz toda escrita que casar com o filtro devolver este erro (para testar o caminho de falha).
-  falharEscritaQuando: (quando: ((op: Operacao) => boolean) | null, mensagem?: string) => void;
+  // Faz toda escrita que casar com o filtro devolver este erro (para testar o caminho de falha). `codigo` é o código que o
+  // banco numera (PGRST204 = coluna que não existe, 42501 = sem permissão).
+  falharEscritaQuando: (quando: ((op: Operacao) => boolean) | null, mensagem?: string, codigo?: string) => void;
   // Segura cada escrita até a função devolver (para testar duas gravações em andamento ao mesmo tempo).
   antesDeEscrever: (gancho: ((op: Operacao) => Promise<void> | void) | null) => void;
 }
@@ -36,33 +43,51 @@ const compararOrdem = (a: unknown, b: unknown, crescente: boolean) => {
   return crescente ? c : -c;
 };
 
-// Coluna pedida no select. Aceita jsonb com apelido, como o PostgREST ("origem:resultado->_meta->>origem"): "->>" devolve
-// texto, "->" devolve o json; caminho que não existe devolve null.
-function projetar(l: Linha, c: string): [string, unknown] {
-  const m = /^([A-Za-z_]\w*):([A-Za-z_]\w*)((?:->>?[A-Za-z_]\w*)+)$/.exec(c);
-  if (!m) return [c, l[c]];
-  const passos = [...m[3].matchAll(/->(>?)(\w+)/g)];
-  let valor: unknown = l[m[2]];
+// Segue o caminho jsonb como o PostgREST: "->>" devolve texto, "->" devolve o json; caminho que não existe devolve null.
+function seguirCaminho(inicial: unknown, caminho: string): unknown {
+  const passos = [...caminho.matchAll(/->(>?)(\w+)/g)];
+  let valor: unknown = inicial;
   for (const passo of passos) {
     valor = valor !== null && typeof valor === 'object' ? (valor as Record<string, unknown>)[passo[2]] : null;
     if (valor === undefined) valor = null;
   }
   const comoTexto = passos[passos.length - 1][1] === '>';
-  return [m[1], comoTexto && valor !== null && typeof valor !== 'string' ? JSON.stringify(valor) : valor];
+  return comoTexto && valor !== null && typeof valor !== 'string' ? JSON.stringify(valor) : valor;
+}
+
+// Coluna pedida no select. Aceita jsonb com apelido, como o PostgREST ("origem:resultado->_meta->>origem").
+function projetar(l: Linha, c: string): [string, unknown] {
+  const m = /^([A-Za-z_]\w*):([A-Za-z_]\w*)((?:->>?[A-Za-z_]\w*)+)$/.exec(c);
+  if (!m) return [c, l[c]];
+  return [m[1], seguirCaminho(l[m[2]], m[3])];
+}
+
+// Coluna de um filtro (eq, not). Aceita o caminho jsonb sem apelido, como o PostgREST ("metadata->>origem"); coluna comum
+// devolve o valor da linha.
+function valorDaColuna(l: Linha, c: string): unknown {
+  const m = /^([A-Za-z_]\w*)((?:->>?[A-Za-z_]\w*)+)$/.exec(c);
+  return m ? seguirCaminho(l[m[1]], m[2]) : l[c];
 }
 
 // Valores que o banco de verdade preenche sozinho (DEFAULT) quando a linha não os traz.
 const padroesDaTabela: Record<string, () => Linha> = { cassi_financeiro_clientes: () => ({ lancamentos: [] }) };
 
-export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
+// `padroesNoInsert`: o que o servidor preenche sozinho (um created_at, por exemplo) numa linha NOVA que o app grava. Só vale no
+// insert: as linhas iniciais continuam exatamente como o teste as escreveu.
+export interface OpcoesDoBancoFalso {
+  padroesNoInsert?: Record<string, () => Linha>;
+}
+
+export function criarBancoFalso(inicial: Record<string, Linha[]>, opcoes: OpcoesDoBancoFalso = {}): BancoFalso {
   const tabelas: Record<string, Linha[]> = {};
   for (const [nome, linhas] of Object.entries(inicial)) tabelas[nome] = linhas.map((l) => ({ ...(padroesDaTabela[nome]?.() ?? {}), ...l }));
   const operacoes: Operacao[] = [];
   let falhar: ((op: Operacao) => boolean) | null = null;
   let ganchoEscrita: ((op: Operacao) => Promise<void> | void) | null = null;
   let mensagemFalha = 'falha simulada';
+  let codigoFalha: string | undefined;
 
-  class Consulta implements PromiseLike<{ data: unknown; error: { message: string } | null }> {
+  class Consulta implements PromiseLike<{ data: unknown; error: ErroDoBanco | null }> {
     private tipo: Operacao['tipo'] = 'select';
     private payload: unknown;
     private opcoes: unknown;
@@ -77,7 +102,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
 
     // Como o PostgREST: só devolve as colunas pedidas ("*" e relações embutidas devolvem a linha inteira).
     select(colunas?: string) {
-      if (this.tipo === 'update') this.pedeRetorno = true;
+      if (this.tipo === 'update' || this.tipo === 'delete') this.pedeRetorno = true;
       if (typeof colunas === 'string' && !colunas.includes('*') && !colunas.includes('(')) this.colunas = colunas.split(',').map((c) => c.trim()).filter(Boolean);
       return this;
     }
@@ -89,17 +114,18 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     // jsonb como no PostgREST: o valor do filtro vem como texto JSON e é comparado com o jsonb da coluna.
     eq(c: string, v: unknown) {
       return this.filtro('eq', [c, v], (r) => {
-        if (typeof v === 'string' && r[c] !== null && typeof r[c] === 'object') {
-          try { return JSON.stringify(r[c]) === JSON.stringify(JSON.parse(v)); } catch { return false; } // texto que não é JSON: não casa
+        const valor = valorDaColuna(r, c);
+        if (typeof v === 'string' && valor !== null && typeof valor === 'object') {
+          try { return JSON.stringify(valor) === JSON.stringify(JSON.parse(v)); } catch { return false; } // texto que não é JSON: não casa
         }
-        return r[c] === v;
+        return valor === v;
       });
     }
     neq(c: string, v: unknown) { return this.filtro('neq', [c, v], (r) => r[c] !== v); }
     in(c: string, vs: unknown[]) { return this.filtro('in', [c, vs], (r) => vs.includes(r[c])); }
     is(c: string, v: unknown) { return this.filtro('is', [c, v], (r) => (r[c] ?? null) === v); }
     not(c: string, op: string, v: unknown) {
-      return this.filtro('not', [c, op, v], (r) => (op === 'is' ? (r[c] ?? null) !== v : true));
+      return this.filtro('not', [c, op, v], (r) => (op === 'is' ? (valorDaColuna(r, c) ?? null) !== v : true));
     }
     ilike(c: string, padrao: string) {
       const re = new RegExp(`^${padrao.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*')}$`, 'i');
@@ -127,7 +153,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     private executar(op: Operacao) {
       operacoes.push(op);
       const linhas = (tabelas[this.tabela] ??= []);
-      if (this.tipo !== 'select' && falhar && falhar(op)) return { data: null, error: { message: mensagemFalha } };
+      if (this.tipo !== 'select' && falhar && falhar(op)) return { data: null, error: { message: mensagemFalha, ...(codigoFalha ? { code: codigoFalha } : {}) } };
       const casa = (r: Linha) => this.testes.every((t) => t(r));
       if (this.tipo === 'select') {
         const cols = this.colunas;
@@ -149,21 +175,36 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
         return { data: this.pedeRetorno ? alvo.map((l) => ({ ...l })) : null, error: null };
       }
       if (this.tipo === 'delete') {
+        const removidas = linhas.filter(casa);
         tabelas[this.tabela] = linhas.filter((l) => !casa(l));
-        return { data: null, error: null };
+        // Como o PostgREST: com .select() depois do delete, devolve as linhas removidas (só as colunas pedidas); sem nenhuma, lista vazia.
+        const cols = this.colunas;
+        const devolvidas = removidas.map((l) => (cols ? Object.fromEntries(cols.map((c) => projetar(l, c))) : { ...l }));
+        return { data: this.pedeRetorno ? devolvidas : null, error: null };
       }
       const novas = (Array.isArray(this.payload) ? this.payload : [this.payload]) as Linha[];
+      if (this.tipo === 'insert') {
+        // Chave primária repetida recusa o comando inteiro, como o Postgres (23505).
+        const usados = new Set(linhas.map((l) => l.id));
+        for (const n of novas) {
+          if (n.id === undefined) continue;
+          if (usados.has(n.id)) {
+            return { data: null, error: { message: `duplicate key value violates unique constraint "${this.tabela}_pkey"`, code: '23505' } };
+          }
+          usados.add(n.id);
+        }
+      }
       const conflito = String((this.opcoes as { onConflict?: string } | undefined)?.onConflict || '').split(',').filter(Boolean);
       for (const n of novas) {
         const repetida = conflito.length > 0 && linhas.some((l) => conflito.every((c) => l[c] === n[c]));
         if (repetida && this.tipo === 'upsert') continue;
-        linhas.push({ id: `${this.tabela}-${linhas.length + 1}`, ...(padroesDaTabela[this.tabela]?.() ?? {}), ...n });
+        linhas.push({ id: `${this.tabela}-${linhas.length + 1}`, ...(padroesDaTabela[this.tabela]?.() ?? {}), ...(this.tipo === 'insert' ? (opcoes.padroesNoInsert?.[this.tabela]?.() ?? {}) : {}), ...n });
       }
       return { data: null, error: null };
     }
 
-    then<R1 = { data: unknown; error: { message: string } | null }, R2 = never>(
-      resolver?: ((v: { data: unknown; error: { message: string } | null }) => R1 | PromiseLike<R1>) | null,
+    then<R1 = { data: unknown; error: ErroDoBanco | null }, R2 = never>(
+      resolver?: ((v: { data: unknown; error: ErroDoBanco | null }) => R1 | PromiseLike<R1>) | null,
       rejeitar?: ((e: unknown) => R2 | PromiseLike<R2>) | null,
     ): PromiseLike<R1 | R2> {
       const op = this.operacao();
@@ -214,7 +255,7 @@ export function criarBancoFalso(inicial: Record<string, Linha[]>): BancoFalso {
     tabelas,
     operacoes,
     escritas: () => operacoes.filter((o) => o.tipo !== 'select'),
-    falharEscritaQuando: (quando, mensagem = 'falha simulada') => { falhar = quando; mensagemFalha = mensagem; },
+    falharEscritaQuando: (quando, mensagem = 'falha simulada', codigo) => { falhar = quando; mensagemFalha = mensagem; codigoFalha = codigo; },
     antesDeEscrever: (gancho) => { ganchoEscrita = gancho; },
   };
 }

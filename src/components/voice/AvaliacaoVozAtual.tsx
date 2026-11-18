@@ -17,7 +17,7 @@ import { atualizarPlanoComEdicoes, condutasProfissional } from '@/utils/voiceAss
 import { FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import AlertaRelatoDoPaciente from './AlertaRelatoDoPaciente';
 import LinhaDoTempoClinica from '@/components/resumoClinico/LinhaDoTempoClinica';
-import type { DestinoDoRegistro } from '@/lib/resumoClinico/tipos';
+import type { CirurgiaDoCliente, DestinoDoRegistro, Marco } from '@/lib/resumoClinico/tipos';
 
 interface Props {
   pacienteId: string;
@@ -29,9 +29,13 @@ interface Props {
   onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
   /** A página diz se um destino tem onde abrir na visão atual (por exemplo, a lente esconde o cartão de CID). */
   registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
+  /** Pede ao dono da página para confirmar a data real de uma cirurgia que o cliente relatou. Sem ela, nenhum botão aparece. */
+  onConfirmarMarco?: (cirurgia: CirurgiaDoCliente) => void;
+  /** Pede ao dono da página para desfazer uma confirmação. Sem ela, nenhum botão aparece. */
+  onDesfazerMarco?: (marco: Marco) => void;
 }
 
-export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade', onAbrirAvatar, onAbrirRegistro, registroAbrivel }: Props) {
+export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType = 'identidade', onAbrirAvatar, onAbrirRegistro, registroAbrivel, onConfirmarMarco, onDesfazerMarco }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -163,7 +167,14 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     return (
       <div className="space-y-4">
         <AlertaRelatoDoPaciente pacienteId={pacienteId} />
-        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivelAqui} />
+        <LinhaDoTempoClinica
+          pacienteId={pacienteId}
+          onAbrirAvatar={onAbrirAvatar}
+          onAbrirRegistro={onAbrirRegistro}
+          registroAbrivel={registroAbrivelAqui}
+          onConfirmarMarco={onConfirmarMarco}
+          onDesfazerMarco={onDesfazerMarco}
+        />
       </div>
     );
   }
@@ -233,6 +244,8 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           onAbrirAvatar={onAbrirAvatar}
           onAbrirRegistro={onAbrirRegistro}
           registroAbrivel={registroAbrivelAqui}
+          onConfirmarMarco={onConfirmarMarco}
+          onDesfazerMarco={onDesfazerMarco}
           ofertaTratamentoInicial={ofertaTratamentoDe === latest.id}
           onOfertaTratamento={(ativa) => setOfertaTratamentoDe(ativa ? latest.id : null)}
         />
@@ -248,7 +261,14 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
       )}
 
       {!hasResult && (
-        <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivelAqui} />
+        <LinhaDoTempoClinica
+          pacienteId={pacienteId}
+          onAbrirAvatar={onAbrirAvatar}
+          onAbrirRegistro={onAbrirRegistro}
+          registroAbrivel={registroAbrivelAqui}
+          onConfirmarMarco={onConfirmarMarco}
+          onDesfazerMarco={onDesfazerMarco}
+        />
       )}
 
       {/* Dialog: complementar avaliação existente com voz/áudio/texto */}

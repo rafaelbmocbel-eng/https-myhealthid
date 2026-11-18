@@ -32,6 +32,10 @@ import { useAgenda } from '@/hooks/useAgenda';
 import { useLayoutConfig } from '@/contexts/LayoutConfigContext';
 import { visaoGeralMostraOAvatar } from '@/lib/avatar/irParaOAvatar';
 import { useAbrirRegistroClinico } from '@/hooks/useAbrirRegistroClinico';
+import { useConfirmarMarcoClinico } from '@/hooks/useConfirmarMarcoClinico';
+import { useClinicaContext } from '@/hooks/useClinicaContext';
+import ConfirmarMarcoDialog from '@/components/resumoClinico/ConfirmarMarcoDialog';
+import DesfazerMarcoDialog from '@/components/resumoClinico/DesfazerMarcoDialog';
 import type { DestinoDoRegistro } from '@/lib/resumoClinico/tipos';
 const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
 const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
@@ -269,6 +273,14 @@ export default function PacientePerfil() {
     },
     enabled: !!user && !!id,
   });
+
+  // Confirmar com a data real um marco que o cliente relatou. O hook fica aqui, antes de qualquer retorno condicional, e os
+  // diálogos no fim da página: as seções da avaliação remontam a cada savedAt e levariam o texto digitado junto.
+  const confirmarMarco = useConfirmarMarcoClinico(id, paciente?.data_nascimento);
+  const { papel: papelNaClinica, loading: carregandoOPapel } = useClinicaContext();
+  // A recepção não registra dado clínico. Enquanto o papel carrega o botão também não aparece: chegar um instante depois é
+  // melhor do que aparecer para quem não pode. Modo solo e os demais papéis liberam.
+  const podeConfirmarMarco = !carregandoOPapel && papelNaClinica !== 'recepcao';
 
   const { data: agendamentos = [], isLoading: loadingAg } = useQuery({
     queryKey: ['agendamentos-paciente', id],
@@ -1184,6 +1196,8 @@ export default function PacientePerfil() {
               onAbrirAvatar={visaoGeralMostraOAvatar(layoutCfg.sub_tabs) ? irParaOAvatar : undefined}
               onAbrirRegistro={abrirRegistro}
               registroAbrivel={registroAbrivel}
+              onConfirmarMarco={podeConfirmarMarco ? confirmarMarco.pedirConfirmacao : undefined}
+              onDesfazerMarco={podeConfirmarMarco ? confirmarMarco.pedirDesfazer : undefined}
             />
             {id && <CheckinSemanalCard pacienteId={id} variante="avaliacao" />}
             <ResumoConsultaPresencial
@@ -1310,6 +1324,25 @@ export default function PacientePerfil() {
       </div>
       {paciente && (
         <>
+          <ConfirmarMarcoDialog
+            aberto={confirmarMarco.confirmacao.alvo !== null}
+            cirurgia={confirmarMarco.confirmacao.exibido}
+            salvando={confirmarMarco.confirmacao.salvando}
+            erro={confirmarMarco.confirmacao.erro}
+            nascimento={confirmarMarco.confirmacao.nascimento}
+            onConfirmar={confirmarMarco.confirmacao.confirmar}
+            onCancelar={confirmarMarco.confirmacao.cancelar}
+            onCloseAutoFocus={confirmarMarco.devolverOFoco}
+          />
+          <DesfazerMarcoDialog
+            aberto={confirmarMarco.desfazer.alvo !== null}
+            titulo={confirmarMarco.desfazer.exibido?.titulo ?? ''}
+            salvando={confirmarMarco.desfazer.salvando}
+            erro={confirmarMarco.desfazer.erro}
+            onDesfazer={confirmarMarco.desfazer.desfazer}
+            onCancelar={confirmarMarco.desfazer.cancelar}
+            onCloseAutoFocus={confirmarMarco.devolverOFoco}
+          />
           {/* Renderiza só quando aberto — evita baixar jspdf/html2canvas junto com a página */}
           {docsModalOpen && (
             <Suspense fallback={null}>

@@ -4,8 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import {
-  CAMPO_ORIGEM_DO_RELATO, FONTES_VAZIAS, ROTULO_DA_FONTE, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO, TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM,
+  CAMPO_ORIGEM_DO_RELATO, COLUNAS_DA_CONFIRMACAO, FONTES_VAZIAS, ORIGEM_CONFIRMACAO, ROTULO_DA_FONTE, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO,
+  TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM,
 } from '@/lib/resumoClinico/tipos';
+import { textoLimpo } from '@/lib/resumoClinico/leitura';
 import { montarCorte, montarCorteDosAchados } from '@/lib/resumoClinico/cortes';
 import type { CorteDaContagemDosAchados } from '@/lib/resumoClinico/cortes';
 import { filaDeRevisao, TIPOS_QUE_ENTRAM_NA_FILA, totalAguardandoRevisao } from '@/lib/avatar/filaDeRevisao';
@@ -43,6 +45,11 @@ const LIMITE_POR_TABELA = 50;
 const LIMITE_DE_DIAGNOSTICOS_E_EXAMES_IMPORTADOS = 200;
 const LIMITE_DE_MYID = 20;
 const LIMITE_DE_AVALIACOES = 20;
+// Uma confirmação por cirurgia confirmada: bem menos que isto na prática. Tem limite próprio para uma confirmação antiga
+// nunca ficar de fora só porque a história de vida passou de 50 eventos.
+const LIMITE_DE_CONFIRMACOES = 200;
+// created_at e a marca da confirmação (por caminho JSON com apelido, sem baixar o metadata inteiro) vão nas duas leituras.
+const COLUNAS_DA_HISTORIA_DE_VIDA = `id, data_evento, tipo, titulo, descricao, created_at, ${COLUNAS_DA_CONFIRMACAO}`;
 
 async function lista(consulta: Consulta): Promise<LinhaBruta[]> {
   const { data, error } = await consulta;
@@ -110,11 +117,24 @@ export async function lerFontesClinicas(pacienteId: string, terapeutaId: string)
       return { lido: { avaliacoesVoz: linhas }, limiteCortado };
     },
     historiaVida: async () => {
-      const { linhas, limiteCortado } = await listaLimitada(
-        deste('historia_vida_paciente', 'id, data_evento, tipo, titulo, descricao').order('data_evento', { ascending: false }),
-        LIMITE_POR_TABELA,
-      );
-      return { lido: { historiaVida: linhas }, limiteCortado };
+      // Segunda leitura, só das confirmações do profissional (a marca está no metadata): elas se juntam à lista sem repetir
+      // o id. Se uma das duas falhar, a fonte inteira falha e o aviso diz: sem a confirmação o relato do cliente voltaria à
+      // lista como "não revisado" sem ninguém saber por quê.
+      const [recentes, confirmacoes] = await Promise.all([
+        listaLimitada(deste('historia_vida_paciente', COLUNAS_DA_HISTORIA_DE_VIDA).order('data_evento', { ascending: false }), LIMITE_POR_TABELA),
+        listaLimitada(
+          deste('historia_vida_paciente', COLUNAS_DA_HISTORIA_DE_VIDA)
+            .eq('metadata->>origem', ORIGEM_CONFIRMACAO).order('created_at', { ascending: false }),
+          LIMITE_DE_CONFIRMACOES,
+        ),
+      ]);
+      const jaLidos = new Set(recentes.linhas.map((l) => textoLimpo(l.id)).filter(Boolean));
+      const foraDoCorte = confirmacoes.linhas.filter((l) => {
+        const id = textoLimpo(l.id);
+        return id !== '' && !jaLidos.has(id);
+      });
+      // Se as confirmações passarem de 200, a tabela tem mais de 50 linhas e a primeira leitura também corta: o aviso é o dela.
+      return { lido: { historiaVida: [...recentes.linhas, ...foraDoCorte] }, limiteCortado: recentes.limiteCortado };
     },
     diagnosticos: async () => {
       // Mesma regra da lista de diagnósticos do app (.eq('ativo', true)), só principal e secundário; filtrar aqui também

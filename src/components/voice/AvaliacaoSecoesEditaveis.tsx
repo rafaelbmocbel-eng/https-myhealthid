@@ -22,7 +22,7 @@ import PlanoDesatualizadoAviso from './PlanoDesatualizadoAviso';
 import CondutasProfissionalCard from './CondutasProfissionalCard';
 import ResumoClinicoVisoes from '@/components/resumoClinico/ResumoClinicoVisoes';
 import LinhaDoTempoClinica from '@/components/resumoClinico/LinhaDoTempoClinica';
-import type { DestinoDoRegistro } from '@/lib/resumoClinico/tipos';
+import type { CirurgiaDoCliente, DestinoDoRegistro, Marco } from '@/lib/resumoClinico/tipos';
 
 
 interface Props {
@@ -38,6 +38,9 @@ interface Props {
   /** Abre o registro de origem de um marco da linha do tempo (a avaliação atual ou um diagnóstico). Fornecido pela página. */
   onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
   registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
+  /** Confirmar a data real de uma cirurgia que o cliente relatou. Os diálogos ficam na página: estas seções remontam a cada savedAt e perderiam o texto digitado. */
+  onConfirmarMarco?: (cirurgia: CirurgiaDoCliente) => void;
+  onDesfazerMarco?: (marco: Marco) => void;
   /** Quem remonta este componente (key com savedAt) guarda a oferta de "Atualizar tratamento" e a devolve aqui, senão o aviso some. */
   ofertaTratamentoInicial?: boolean;
   onOfertaTratamento?: (ativa: boolean) => void;
@@ -965,7 +968,7 @@ function DiretrizCompact({ diretriz }: { diretriz: any }) {
   );
 }
 
-export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar, onAbrirAvatar, onAbrirRegistro, registroAbrivel, ofertaTratamentoInicial, onOfertaTratamento }: Props) {
+export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao, onReprocessar, onAbrirAvatar, onAbrirRegistro, registroAbrivel, onConfirmarMarco, onDesfazerMarco, ofertaTratamentoInicial, onOfertaTratamento }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -1677,7 +1680,16 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         {renderCards(secoesTab)}
                       </div>
                     )}
-                    {tab.id === 'clinico' && <LinhaDoTempoClinica pacienteId={pacienteId} onAbrirAvatar={onAbrirAvatar} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivel} />}
+                    {tab.id === 'clinico' && (
+                      <LinhaDoTempoClinica
+                        pacienteId={pacienteId}
+                        onAbrirAvatar={onAbrirAvatar}
+                        onAbrirRegistro={onAbrirRegistro}
+                        registroAbrivel={registroAbrivel}
+                        onConfirmarMarco={onConfirmarMarco}
+                        onDesfazerMarco={onDesfazerMarco}
+                      />
+                    )}
                   </TabsContent>
                 );
               })}

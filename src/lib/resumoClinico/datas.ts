@@ -1,5 +1,5 @@
 import { INSTANTE_DA_DATA_EXPLICITA_DO_DIAGNOSTICO } from './tipos';
-import type { DataDoMarco } from './tipos';
+import type { DataDoMarco, PrecisaoDaData } from './tipos';
 
 // Regra de data da linha do tempo: só vira data o que o registro traz como data de verdade.
 // "hoje" entra sempre como parâmetro ("AAAA-MM-DD", dia do Brasil) para a regra ser testável e sem relógio escondido.
@@ -123,6 +123,26 @@ export function dataDoDiagnosticoPodeSerDoSistema(data: unknown, criadoEm: unkno
 export function erroDaDataDigitada(valor: string, hoje: string): string | null {
   if (SO_DATA.test(valor) && dataDeTabela(valor, hoje)) return null;
   return 'Data inválida: não pode ser no futuro nem antes de 1900.';
+}
+
+/**
+ * Precisão que a confirmação guardou no metadata. Só o texto exato "ano" vale; ausente, "Ano", número ou objeto são "dia",
+ * como toda linha de história de vida sempre foi lida: nada de adivinhar a precisão pelo "-01-01" (um 1º de janeiro de
+ * verdade existe).
+ */
+export function lerPrecisao(valor: unknown): PrecisaoDaData {
+  return valor === 'ano' ? 'ano' : 'dia';
+}
+
+/**
+ * Data de uma linha de historia_vida_paciente. Com a precisão "ano" corta para o ano, mesmo que data_evento traga o dia:
+ * a tela nunca mostra mais do que a precisão diz. Data inválida devolve null.
+ */
+export function dataDaHistoriaDeVida(dataEvento: unknown, precisao: unknown, hoje: string): DataDoMarco | null {
+  const data = dataDeTabela(dataEvento, hoje);
+  if (!data) return null;
+  if (lerPrecisao(precisao) === 'ano') return { iso: data.iso.slice(0, 4), precisao: 'ano' };
+  return data;
 }
 
 export const anoDaData = (data: DataDoMarco): string => data.iso.slice(0, 4);

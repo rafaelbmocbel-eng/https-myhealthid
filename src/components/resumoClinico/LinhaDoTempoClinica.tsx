@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { ArrowRight, ChevronDown, History, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { hojeLocalISO } from '@/lib/dataLocal';
@@ -8,8 +8,10 @@ import { detalheParaExibir, rotuloDoTipoParaExibir, textoDoBotaoAbrir } from '@/
 import { deveMostrarFiltros, filtrarMarcos, opcoesDeFiltro } from '@/lib/resumoClinico/filtros';
 import type { IdDoFiltro } from '@/lib/resumoClinico/filtros';
 import { agruparPorAno, montarLinhaDoTempo, tituloParaExibir } from '@/lib/resumoClinico/marcos';
-import { FONTES_VAZIAS, ROTULO_DOS_ACHADOS_DO_HISTORICO, ROTULO_REGISTRO_NO_APP } from '@/lib/resumoClinico/tipos';
-import type { DestinoDoRegistro, Marco } from '@/lib/resumoClinico/tipos';
+import {
+  FONTES_VAZIAS, ID_DO_TITULO_DA_LINHA_DO_TEMPO, ROTULO_DOS_ACHADOS_DO_HISTORICO, ROTULO_REGISTRO_NO_APP,
+} from '@/lib/resumoClinico/tipos';
+import type { CirurgiaDoCliente, ConfirmacaoDoMarco, DestinoDoRegistro, ItemSemData, Marco } from '@/lib/resumoClinico/tipos';
 import AvisoDeFalhas from './AvisoDeFalhas';
 import AvisoDosAchadosDoHistorico from './AvisoDosAchadosDoHistorico';
 import ComoComecouCard from './ComoComecouCard';
@@ -19,13 +21,70 @@ import SeloDeOrigem from './SeloDeOrigem';
 
 const MARCOS_VISIVEIS = 6;
 
+const CLASSE_DO_BOTAO_DE_ACAO =
+  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-background px-3 text-sm font-medium text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const CLASSE_DO_BOTAO_DE_TEXTO =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+const NOTA_DO_RELATO_ALTERADO = 'O cliente mudou este item depois da confirmação; o relato atual também aparece na lista.';
+const NOTA_DO_RELATO_APAGADO = 'O cliente apagou este item depois da confirmação.';
+
+// Botão do item que o cliente relatou e o profissional ainda pode confirmar. Sem a função da página, o botão não existe.
+function BotaoConfirmar({ item, titulo, onConfirmarMarco }: {
+  item: Pick<Marco | ItemSemData, 'cirurgiaDoCliente' | 'confirmacaoExistente'>;
+  titulo: string;
+  onConfirmarMarco?: (cirurgia: CirurgiaDoCliente) => void;
+}) {
+  const cirurgia = item.cirurgiaDoCliente;
+  if (!onConfirmarMarco || !cirurgia || item.confirmacaoExistente) return null;
+  return (
+    <button
+      type="button"
+      aria-label={`Confirmar com a data real: ${titulo}`}
+      onClick={() => onConfirmarMarco(cirurgia)}
+      className={cn(CLASSE_DO_BOTAO_DE_ACAO, 'mt-1')}
+    >
+      Confirmar com a data real
+    </button>
+  );
+}
+
+// Relato do cliente exatamente como foi guardado na confirmação: nunca o dado vivo, que o cliente pode ter mudado depois.
+function RelatoOriginal({ id, aberto, confirmacao }: { id: string; aberto: boolean; confirmacao: ConfirmacaoDoMarco }) {
+  const { relatoOriginal } = confirmacao;
+  return (
+    // Sempre montado (só escondido) para o aria-controls do botão apontar para um id que existe.
+    <div id={id} hidden={!aberto} data-bloco="relato-original" className="min-w-0 space-y-1 rounded-lg border border-border/60 bg-muted/40 p-3">
+      <p className="text-xs font-medium text-muted-foreground">Relato do cliente (não revisado)</p>
+      <SeloDeOrigem origem="cliente" />
+      <p className="whitespace-pre-wrap break-words text-sm font-medium leading-snug text-foreground">{relatoOriginal.tipo}</p>
+      <p className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground/80">
+        {relatoOriginal.ano ? `Ano que o cliente escreveu: "${relatoOriginal.ano}"` : 'Ano não informado'}
+      </p>
+      {relatoOriginal.complicacoes && (
+        <p className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground/80">Complicações: {relatoOriginal.complicacoes}</p>
+      )}
+    </div>
+  );
+}
+
+function NotaDaConfirmacao({ confirmacao }: { confirmacao: ConfirmacaoDoMarco }) {
+  const frase = { igual: null, alterado: NOTA_DO_RELATO_ALTERADO, apagado: NOTA_DO_RELATO_APAGADO }[confirmacao.situacao];
+  if (!frase) return null;
+  return <p data-situacao={confirmacao.situacao} className="break-words text-sm leading-snug text-amber-800 dark:text-amber-300">{frase}</p>;
+}
+
 interface PropsDoItem {
   marco: Marco;
   onAbrirRegistro?: (destino: DestinoDoRegistro) => void;
   registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
+  onConfirmarMarco?: (cirurgia: CirurgiaDoCliente) => void;
+  onDesfazerMarco?: (marco: Marco) => void;
 }
 
-function ItemDoMarco({ marco, onAbrirRegistro, registroAbrivel }: PropsDoItem) {
+function ItemDoMarco({ marco, onAbrirRegistro, registroAbrivel, onConfirmarMarco, onDesfazerMarco }: PropsDoItem) {
+  const [relatoAberto, setRelatoAberto] = useState(false);
+  const idDoRelato = `relato-original-${useId()}`;
   const registro = marco.natureza === 'registro';
   const destino = marco.destino;
   const nomeDoBotao = textoDoBotaoAbrir(marco);
@@ -50,7 +109,15 @@ function ItemDoMarco({ marco, onAbrirRegistro, registroAbrivel }: PropsDoItem) {
         </p>
         <p className="text-xs text-muted-foreground">{linhaDaData}</p>
         {marco.detalhe && <p className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground/75">{marco.detalhe}</p>}
-        <SeloDeOrigem origem={marco.origem} />
+        <SeloDeOrigem origem={marco.origem} dataConfirmada={!!marco.confirmacao} />
+        {marco.confirmacao && (
+          <>
+            {marco.confirmacao.confirmadoEm && (
+              <p className="text-xs text-muted-foreground">Confirmado por você em {formatarData(marco.confirmacao.confirmadoEm)}</p>
+            )}
+            <NotaDaConfirmacao confirmacao={marco.confirmacao} />
+          </>
+        )}
         {onAbrirRegistro && destino && nomeDoBotao && abrivel && (
           <button
             type="button"
@@ -62,6 +129,31 @@ function ItemDoMarco({ marco, onAbrirRegistro, registroAbrivel }: PropsDoItem) {
             <ArrowRight className="icon-xs shrink-0" aria-hidden="true" />
           </button>
         )}
+        <BotaoConfirmar item={marco} titulo={tituloParaExibir(marco)} onConfirmarMarco={onConfirmarMarco} />
+        {marco.confirmacao && (
+          <div className="flex flex-wrap items-center gap-x-2">
+            <button
+              type="button"
+              aria-expanded={relatoAberto}
+              aria-controls={idDoRelato}
+              onClick={() => setRelatoAberto((v) => !v)}
+              className={cn(CLASSE_DO_BOTAO_DE_TEXTO, 'mt-1')}
+            >
+              ver relato original
+            </button>
+            {onDesfazerMarco && (
+              <button
+                type="button"
+                aria-label={`Desfazer a confirmação de ${marco.titulo}`}
+                onClick={() => onDesfazerMarco(marco)}
+                className={cn(CLASSE_DO_BOTAO_DE_TEXTO, 'mt-1')}
+              >
+                Desfazer
+              </button>
+            )}
+          </div>
+        )}
+        {marco.confirmacao && <RelatoOriginal id={idDoRelato} aberto={relatoAberto} confirmacao={marco.confirmacao} />}
       </div>
     </li>
   );
@@ -78,10 +170,16 @@ interface Props {
   // Diz se aquele destino tem onde abrir nesta tela (a lente pode esconder o cartão de CID; uma avaliação antiga não está na
   // aba). Sem ela, todo marco com destino ganha o botão.
   registroAbrivel?: (destino: DestinoDoRegistro) => boolean;
+  // Abre o diálogo para o profissional confirmar a data real de uma cirurgia que o cliente relatou. A página é quem sabe
+  // gravar; esta tela só chama a função. Sem ela, nenhum item ganha o botão "Confirmar com a data real".
+  onConfirmarMarco?: (cirurgia: CirurgiaDoCliente) => void;
+  // Abre o pedido de confirmação para desfazer uma confirmação. Sem ela, nenhum marco confirmado ganha o botão "Desfazer".
+  onDesfazerMarco?: (marco: Marco) => void;
 }
 
 // Só LEITURA e calculada na hora: não grava nada e não entra no prontuário. O filtro e o "Ver todos" só mudam o que aparece.
-export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrirRegistro, registroAbrivel }: Props) {
+// Confirmar e desfazer chegam por props de função: quem grava é a página.
+export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrirRegistro, registroAbrivel, onConfirmarMarco, onDesfazerMarco }: Props) {
   const { data, isLoading, isError } = useFontesClinicas(pacienteId);
   // Leitura à parte: a linha do tempo não espera pela contagem dos achados nem cai se ela falhar.
   const achados = useAchadosParaRevisao(pacienteId);
@@ -114,13 +212,13 @@ export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrir
   const semMarcos = linha.marcos.length === 0 && linha.semData.length === 0;
 
   return (
-    <section aria-labelledby="titulo-linha-do-tempo-clinica" className="space-y-3 rounded-2xl border border-border/50 bg-card px-3 py-3 shadow-xs sm:px-3.5">
+    <section aria-labelledby={ID_DO_TITULO_DA_LINHA_DO_TEMPO} className="space-y-3 rounded-2xl border border-border/50 bg-card px-3 py-3 shadow-xs sm:px-3.5">
       <div className="flex items-start gap-2">
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600" aria-hidden="true">
           <History className="icon-sm" />
         </span>
         <div className="min-w-0">
-          <h3 id="titulo-linha-do-tempo-clinica" className="text-sm font-medium leading-tight text-foreground">Linha do tempo clínica</h3>
+          <h3 id={ID_DO_TITULO_DA_LINHA_DO_TEMPO} className="text-sm font-medium leading-tight text-foreground">Linha do tempo clínica</h3>
           <p className="text-sm leading-snug text-muted-foreground">
             Marcos do histórico do paciente, do mais recente para o mais antigo. Montada na hora; não vai para o prontuário.
           </p>
@@ -173,7 +271,14 @@ export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrir
             <h4 className="text-sm font-semibold tabular-nums text-foreground/80">{g.ano}</h4>
             <ol className="ml-1.5 space-y-3 border-l-2 border-border/60 pl-4">
               {g.marcos.map((m) => (
-                <ItemDoMarco key={m.id} marco={m} onAbrirRegistro={onAbrirRegistro} registroAbrivel={registroAbrivel} />
+                <ItemDoMarco
+                  key={m.id}
+                  marco={m}
+                  onAbrirRegistro={onAbrirRegistro}
+                  registroAbrivel={registroAbrivel}
+                  onConfirmarMarco={onConfirmarMarco}
+                  onDesfazerMarco={onDesfazerMarco}
+                />
               ))}
             </ol>
           </div>
@@ -220,6 +325,7 @@ export default function LinhaDoTempoClinica({ pacienteId, onAbrirAvatar, onAbrir
                 <p className="break-words text-sm font-medium leading-snug text-foreground">{tituloParaExibir(item)}</p>
                 <p className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground/75">{detalheParaExibir(item)}</p>
                 <SeloDeOrigem origem={item.origem} />
+                <BotaoConfirmar item={item} titulo={tituloParaExibir(item)} onConfirmarMarco={onConfirmarMarco} />
               </li>
             ))}
           </ul>

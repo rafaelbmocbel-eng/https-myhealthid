@@ -8,7 +8,7 @@ export function objeto(v: unknown): Objeto | null {
 }
 
 // Alguns jsonb chegam como texto JSON (gravados duas vezes).
-function objetoOuJson(v: unknown): Objeto | null {
+export function objetoOuJson(v: unknown): Objeto | null {
   if (typeof v === 'string') {
     try {
       return objeto(JSON.parse(v));

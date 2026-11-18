@@ -9,6 +9,7 @@ import { envolverBanco, type BancoEnvolvido } from './helpers/bancoFalsoLeitura'
 import { COLUNA_ORIGEM, FILTRO_SO_PROFISSIONAL } from '@/utils/voiceAssessment/origemAvaliacao';
 import { CAMPO_ORIGEM_DO_RELATO, ROTULO_DA_FONTE, STATUS_DE_EXAME_IMPORTADO_CONCLUIDO, TIPOS_DE_DIAGNOSTICO_QUE_ENTRAM, type ChaveDaFonte, type ChaveDeLista } from '@/lib/resumoClinico/tipos';
 import { montarLinhaDoTempo } from '@/lib/resumoClinico/marcos';
+import { chaveDaConfirmacao } from '@/lib/resumoClinico/confirmacao';
 import { montarResumoCompleto } from '@/lib/resumoClinico/resumoCompleto';
 
 const h = vi.hoisted(() => ({
@@ -28,11 +29,12 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'prof-1
 import { invalidarFontesClinicas, lerFontesClinicas, useFontesClinicas } from '@/hooks/useFontesClinicas';
 
 // Cada lista pede UMA linha a mais que o limite, para saber se foi cortada. Linhas sem data ficam por último na ordem: com
-// limite pequeno o corte tira justamente a faixa "Sem data".
+// limite pequeno o corte tira justamente a faixa "Sem data". A história de vida lê duas vezes: os 50 mais recentes (51) e,
+// à parte, as confirmações do profissional com limite próprio de 200 (201).
 const LIMITE_PEDIDO_POR_TABELA: Record<string, number[]> = {
   avaliacoes_voz: [21],
   avaliacoes_identidade: [51],
-  historia_vida_paciente: [51],
+  historia_vida_paciente: [51, 201],
   diagnosticos_paciente: [201],
   exames_presenciais: [51],
   exames_importados: [201],
@@ -200,7 +202,8 @@ describe('lerFontesClinicas', () => {
     const limite = (tabela: string) => h.banco.chamadas.filter((c) => c.tabela === tabela && c.metodo === 'limit').map((c) => Number(c.args[0]));
     expect(limite('diagnosticos_paciente')).toEqual([201]);
     expect(limite('exames_importados')).toEqual([201]);
-    for (const tabela of ['historia_vida_paciente', 'exames_presenciais', 'testes_funcionais_paciente', 'escalas_psicologia', 'avaliacoes_identidade']) expect(limite(tabela), tabela).toEqual([51]);
+    for (const tabela of ['exames_presenciais', 'testes_funcionais_paciente', 'escalas_psicologia', 'avaliacoes_identidade']) expect(limite(tabela), tabela).toEqual([51]);
+    expect(limite('historia_vida_paciente')).toEqual([51, 201]); // 50 mais recentes + as confirmações (200)
     const ordem = (tabela: string) => h.banco.chamadas.find((c) => c.tabela === tabela && c.metodo === 'order')?.args;
     expect(ordem('diagnosticos_paciente')).toEqual(['data_diagnostico', { ascending: false, nullsFirst: false }]);
     expect(ordem('exames_importados')).toEqual(['data_exame', { ascending: false, nullsFirst: false }]);
@@ -288,6 +291,141 @@ describe('lerFontesClinicas', () => {
     expect(fonte).not.toMatch(/\.(insert|update|upsert|delete|rpc)\s*\(/);
     expect(fonte).not.toMatch(/functions\s*\.\s*invoke/);
     expect(fonte).not.toMatch(/\bany\b/);
+  });
+});
+
+// ── Confirmações do profissional na história de vida ─────────────────────────────────────────────────────────────
+describe('lerFontesClinicas: história de vida e as confirmações do profissional', () => {
+  const COLUNAS_ESPERADAS = [
+    'id', 'data_evento', 'tipo', 'titulo', 'descricao', 'created_at',
+    'confirmacao_origem:metadata->>origem', 'confirmacao_versao:metadata->>versao', 'confirmacao_chave:metadata->>chave_cliente',
+    'confirmacao_precisao:metadata->>precisao', 'confirmacao_relato:metadata->relato_cliente', 'confirmacao_por:metadata->confirmado_por',
+  ];
+  const chaveDoJoelho = chaveDaConfirmacao({ indice: 0, tipo: 'Joelho', anoOriginal: '2022', complicacoes: '' }, 'historico_clinico:cirurgia:0');
+  const confirmacao = (extra: Linha = {}): Linha => ({
+    id: 'c1', paciente_id: 'pac-1', terapeuta_id: 'prof-1', data_evento: '2022-01-01', tipo: 'cirurgia', titulo: 'Joelho',
+    descricao: 'Data aproximada: só o ano (2022).', created_at: '2026-10-01T15:00:00+00:00', visivel_paciente: false,
+    metadata: {
+      versao: 1, origem: 'confirmacao_de_marco', fonte: 'historico_clinico', chave_cliente: chaveDoJoelho,
+      relato_cliente: { tipo: 'Joelho', ano: '2022', complicacoes: '' }, precisao: 'ano', confirmado_por: { nome: 'Ana Souza', registro: 'CREFITO 123-F' },
+    },
+    ...extra,
+  });
+  const selects = () => h.banco.chamadas.filter((c) => c.tabela === 'historia_vida_paciente' && c.metodo === 'select');
+  const dia = (i: number) => new Date(Date.UTC(2026, 9, 1) - i * 86_400_000).toISOString().slice(0, 10);
+
+  it('as duas leituras pedem created_at e a marca da confirmação por caminho JSON com apelido, sem "*" e sem baixar o metadata inteiro', async () => {
+    await lerFontesClinicas('pac-1', 'prof-1');
+    expect(selects()).toHaveLength(2);
+    for (const c of selects()) {
+      expect(String(c.args[0]).split(',').map((x) => x.trim())).toEqual(COLUNAS_ESPERADAS);
+      expect(String(c.args[0])).not.toContain('*');
+      expect(String(c.args[0])).not.toMatch(/(^|, )metadata(,|$)/);
+    }
+  });
+
+  it('a segunda leitura é só das confirmações: marca de origem, deste paciente, mais antigas por último, limite próprio de 200 (+1); só SELECT', async () => {
+    await lerFontesClinicas('pac-1', 'prof-1');
+    const doBanco = h.banco.chamadas.filter((c) => c.tabela === 'historia_vida_paciente');
+    expect(doBanco.filter((c) => c.metodo === 'eq').map((c) => c.args.join('='))).toEqual(['paciente_id=pac-1', 'paciente_id=pac-1', 'metadata->>origem=confirmacao_de_marco']);
+    expect(doBanco.filter((c) => c.metodo === 'order').map((c) => c.args)).toEqual([['data_evento', { ascending: false }], ['created_at', { ascending: false }]]);
+    expect(doBanco.filter((c) => c.metodo === 'limit').map((c) => c.args[0])).toEqual([51, 201]);
+    expect(h.falso.escritas()).toEqual([]);
+  });
+
+  it('a linha lida do banco com a marca vira o marco confirmado e o relato do cliente some (os apelidos batem com o leitor)', async () => {
+    preparar({ ...cenario(), historia_vida_paciente: [confirmacao()] });
+    const { fontes, falhas } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(falhas).toEqual([]);
+    expect(fontes.historiaVida).toHaveLength(1);
+    const { marcos, semData } = montarLinhaDoTempo(fontes, '2026-11-15');
+    expect(marcos.map((m) => m.id)).toEqual(expect.arrayContaining(['historia_vida:c1']));
+    expect(marcos.map((m) => m.id)).not.toContain('historico_clinico:cirurgia:0');
+    expect(semData.map((i) => i.fonte)).not.toContain('historico_clinico'); // o relato também não fica em "Sem data"
+    const confirmado = marcos.find((m) => m.id === 'historia_vida:c1');
+    expect(confirmado).toMatchObject({
+      data: { iso: '2022', precisao: 'ano' }, origem: 'profissional', revisado: true, titulo: 'Joelho', detalhe: undefined,
+      confirmacao: { idDaLinha: 'c1', chave: chaveDoJoelho, situacao: 'igual', por: 'Ana Souza · CREFITO 123-F', confirmadoEm: { iso: '2026-10-01', precisao: 'dia' } },
+    });
+  });
+
+  it('confirmação fora dos 50 mais recentes (data antiga) entra pela segunda leitura, uma vez só, e o aviso de corte da primeira continua', async () => {
+    const outras = Array.from({ length: 60 }, (_, i) => ({ id: `h${i}`, paciente_id: 'pac-1', data_evento: dia(i), tipo: 'outro', titulo: `Evento ${i}` }));
+    preparar({ ...cenario(), historia_vida_paciente: [...outras, confirmacao({ data_evento: '2020-01-01' })] });
+    const { fontes, cortes } = await lerFontesClinicas('pac-1', 'prof-1');
+    const ids = fontes.historiaVida.map((l) => l.id);
+    expect(ids.filter((id) => id === 'c1')).toHaveLength(1); // a leitura dos 50 mais recentes deixou de fora; a segunda a trouxe
+    expect(ids).toHaveLength(51); // 50 recentes + a confirmação
+    expect(ids).not.toContain('h59');
+    expect(cortes).toEqual([{ fonte: 'historiaVida', nome: 'História de vida', limite: 50, texto: 'História de vida: mostrando os 50 mais recentes.' }]);
+  });
+
+  it('confirmação que já veio na primeira leitura não é repetida (junta por id)', async () => {
+    preparar({ ...cenario(), historia_vida_paciente: [confirmacao(), { id: 'h1', paciente_id: 'pac-1', data_evento: '2019-03-04', tipo: 'fratura', titulo: 'Fratura' }] });
+    const { fontes } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(fontes.historiaVida.map((l) => l.id).sort()).toEqual(['c1', 'h1']);
+  });
+
+  it('só as linhas com a marca de origem vêm da segunda leitura: linha manual e confirmação de outro paciente não entram', async () => {
+    const manual = { id: 'm1', paciente_id: 'pac-1', data_evento: '2015-05-05', tipo: 'outro', titulo: 'Manual', metadata: { origem: 'outra_coisa' } };
+    const deOutro = confirmacao({ id: 'c9', paciente_id: 'pac-2' });
+    preparar({ ...cenario(), historia_vida_paciente: [manual, deOutro, confirmacao()] });
+    const { fontes } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(fontes.historiaVida.map((l) => l.id).sort()).toEqual(['c1', 'm1']);
+  });
+
+  it('mais de 200 confirmações: a primeira leitura também estoura, e o aviso de corte é o dos 50 mais recentes', async () => {
+    const muitas = Array.from({ length: 201 }, (_, i) => confirmacao({ id: `c${i}`, data_evento: '2020-01-01', created_at: `2026-0${1 + (i % 9)}-01T12:00:00+00:00` }));
+    preparar({ ...cenario(), historia_vida_paciente: muitas });
+    const { cortes, fontes } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(cortes).toEqual([{ fonte: 'historiaVida', nome: 'História de vida', limite: 50, texto: 'História de vida: mostrando os 50 mais recentes.' }]);
+    expect(fontes.historiaVida.length).toBeGreaterThanOrEqual(200);
+    expect(new Set(fontes.historiaVida.map((l) => l.id)).size).toBe(fontes.historiaVida.length); // sem id repetido
+  });
+
+  // Um banco em que só a leitura das confirmações (o filtro pela marca) falha: o resto da tabela e as outras fontes funcionam.
+  type Metodo = (...args: unknown[]) => unknown;
+  function falharSoALeituraDasConfirmacoes() {
+    const falha = (): unknown => new Proxy({}, {
+      get: (_alvo, prop) => (prop === 'then'
+        ? (ok: Metodo, ruim?: Metodo) => Promise.resolve({ data: null, error: { message: 'confirmações indisponíveis' } }).then(ok, ruim)
+        : () => falha()),
+    });
+    const envolver = (consulta: object): object => {
+      const q: object = new Proxy(consulta, {
+        get(alvo, prop) {
+          const valor = Reflect.get(alvo, prop, alvo) as unknown;
+          if (typeof valor !== 'function') return valor;
+          return (...args: unknown[]) => {
+            if (prop === 'eq' && args[0] === 'metadata->>origem') return falha();
+            const resposta = (valor as Metodo).apply(alvo, args);
+            return resposta === alvo ? q : resposta;
+          };
+        },
+      });
+      return q;
+    };
+    const original = h.banco.from;
+    h.banco.from = (tabela: string) => (tabela === 'historia_vida_paciente' ? envolver(original(tabela) as object) : original(tabela));
+  }
+
+  it('se só a leitura das confirmações falhar, a fonte história de vida falha com aviso (sem mostrar relato como não revisado em silêncio) e as outras seguem', async () => {
+    preparar({ ...cenario(), historia_vida_paciente: [confirmacao()] });
+    falharSoALeituraDasConfirmacoes();
+    const { fontes, falhas } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(falhas).toEqual(['a história de vida']);
+    expect(fontes.historiaVida).toEqual([]);
+    expect(fontes.diagnosticos).toHaveLength(2);
+    expect(fontes.escalas).toHaveLength(1);
+    expect(fontes.paciente).not.toBeNull();
+  });
+
+  it('se a primeira leitura falhar e a das confirmações não, o resultado é o mesmo: só a fonte história de vida cai', async () => {
+    h.banco.falharLeitura('historia_vida_paciente', 'rejeitar');
+    const { fontes, falhas } = await lerFontesClinicas('pac-1', 'prof-1');
+    expect(falhas).toEqual(['a história de vida']);
+    expect(fontes.historiaVida).toEqual([]);
+    expect(fontes.diagnosticos).toHaveLength(2);
   });
 });
 
