@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { selectTudoPaginado } from "@/lib/supabasePaginado";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarClock, BellRing, HeartHandshake, UserX, MessageSquare, Moon } from "lucide-react";
 import { WaBubblePreview } from "@/components/whatsapp/WaBubblePreview";
+import { CampoMensagemBroadcast, PreviasDaMensagem } from "@/components/whatsapp/BroadcastMensagemCampos";
 import { defaultAutomacoes, ensureAutomacoesPadrao } from "@/lib/whatsappAutomacoesDefaults";
+import { avisosDaMensagem, fraseDeConfirmacao, NOME_DE_CONFIRMACAO } from "@/lib/broadcastMensagem";
+import { idsComMyidVencido } from "@/lib/broadcastSegmentos";
+import { resumirDisparos } from "@/lib/disparosResumo";
+import { ROTULO_TOM } from "@/lib/mensagemModelos";
 
 const VARIAVEIS_MSG: { k: string; l: string }[] = [
   { k: "nome", l: "Nome do paciente" },
@@ -90,27 +95,61 @@ const GATILHOS: { k: string; label: string; desc: string }[] = [
 const TOM_VOZ = [
   { v: "amigavel", l: "Amigável e próximo" },
   { v: "formal", l: "Formal e respeitoso" },
-  { v: "tecnico", l: "Técnico-clínico" },
+  { v: "tecnico", l: ROTULO_TOM.tecnico },
 ];
+
+type BroadcastForm = {
+  titulo: string; intencao: string; segmento: string;
+  agendar: boolean; agendado_para: string; personalizarIA: boolean;
+  abAtivo: boolean; variantes: { key: string; texto: string; peso: number }[];
+};
+
+// A IA nasce desligada: o cliente recebe exatamente o texto escrito aqui.
+const broadcastInicial = (): BroadcastForm => ({
+  titulo: "", intencao: "", segmento: "todos",
+  agendar: false, agendado_para: "", personalizarIA: false,
+  abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+});
+
+const EXEMPLO_MENSAGEM = "Ex.: Oi {nome}! 💙 Passando para avisar que a clínica abre mais cedo na próxima sexta, a partir das 7h.";
 
 export default function WhatsappAutomacoes({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<any>(null);
   const [stats, setStats] = useState({ enviados7d: 0, escalados7d: 0, gatilhoTop: "—" });
-  const [broadcast, setBroadcast] = useState<{
-    titulo: string; intencao: string; segmento: string;
-    agendar: boolean; agendado_para: string;
-    abAtivo: boolean; variantes: { key: string; texto: string; peso: number }[];
-  }>({
-    titulo: "", intencao: "", segmento: "todos",
-    agendar: false, agendado_para: "",
-    abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
-  });
+  const [broadcast, setBroadcast] = useState<BroadcastForm>(broadcastInicial);
   const [palavraNova, setPalavraNova] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [confirmDisparo, setConfirmDisparo] = useState<{ ids: string[]; agendadoDate: Date | null } | null>(null);
+  const [confirmDisparo, setConfirmDisparo] = useState<{ ids: string[]; agendadoDate: Date | null; segmento: string } | null>(null);
+  const [conferindo, setConferindo] = useState(false);
   const [nps, setNps] = useState<{ media: number; total: number } | null>(null);
+  const painelConfirmacao = useRef<HTMLDivElement>(null);
+  const botaoDisparo = useRef<HTMLButtonElement>(null);
+  const devolverFocoAoBotao = useRef(false);
+
+  // A confirmação guarda a lista de clientes, o segmento e a data de quando foi aberta: mudar o público ou a data com ela
+  // aberta a deixaria falando de outra campanha, então ela fecha e o profissional confere de novo.
+  useEffect(() => {
+    setConfirmDisparo(null);
+  }, [broadcast.segmento, broadcast.agendar, broadcast.agendado_para]);
+
+  // O painel substitui o botão, então o foco ia para o nada e, no celular, ele abria abaixo da dobra. Ao cancelar, enviar ou
+  // terminar a conferência com aviso de erro o foco volta ao botão (desabilitado durante a conferência, ele perde o foco);
+  // quando a confirmação fecha sozinha (mudou o público) o foco fica onde a pessoa estava.
+  useEffect(() => {
+    if (confirmDisparo) {
+      devolverFocoAoBotao.current = false;
+      painelConfirmacao.current?.focus({ preventScroll: true });
+      painelConfirmacao.current?.scrollIntoView?.({ block: "start" });
+      return;
+    }
+    if (conferindo) return;
+    if (devolverFocoAoBotao.current) {
+      devolverFocoAoBotao.current = false;
+      botaoDisparo.current?.focus();
+    }
+  }, [confirmDisparo, conferindo]);
 
   useEffect(() => {
     (async () => {
@@ -132,25 +171,28 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       }
 
       const desde = new Date(Date.now() - 7 * 86400000).toISOString();
-      const { data: disp } = await supabase
-        .from("agente_disparos")
-        .select("gatilho, status")
-        .eq("terapeuta_id", user.id)
-        .gte("created_at", desde);
+      let disp: { gatilho: string | null; status: string | null }[] = [];
+      try {
+        disp = await selectTudoPaginado<{ gatilho: string | null; status: string | null }>((de, ate) =>
+          supabase
+            .from("agente_disparos")
+            .select("gatilho, status")
+            .eq("terapeuta_id", user.id)
+            .gte("created_at", desde)
+            .order("created_at", { ascending: false })
+            .order("id")
+            .range(de, ate));
+      } catch (e) {
+        // Sem os disparos o resumo fica zerado, mas "Escalados" e a nota média do NPS abaixo ainda carregam.
+        console.error("[WhatsappAutomacoes] erro ao ler os disparos dos últimos 7 dias:", e);
+      }
       const { count: esc } = await supabase
         .from("whatsapp_conversas")
         .select("id", { count: "exact", head: true })
         .eq("terapeuta_id", user.id)
         .eq("requer_atencao", true)
         .gte("updated_at", desde);
-      const contagem: Record<string, number> = {};
-      (disp || []).forEach((d: any) => { contagem[d.gatilho] = (contagem[d.gatilho] || 0) + 1; });
-      const top = Object.entries(contagem).sort((a, b) => b[1] - a[1])[0];
-      setStats({
-        enviados7d: (disp || []).filter((d: any) => d.status === "enviado").length,
-        escalados7d: esc || 0,
-        gatilhoTop: top ? `${top[0]} (${top[1]})` : "—",
-      });
+      setStats({ ...resumirDisparos(disp), escalados7d: esc || 0 });
 
       const { data: notas } = await (supabase as any)
         .from("nps_respostas").select("nota").eq("terapeuta_id", user.id).limit(500);
@@ -232,10 +274,13 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       return [...new Set((data || []).map((d: any) => d.paciente_id))] as string[];
     }
     if (seg === "myid_vencido") {
-      const limite = new Date(Date.now() - 30 * 86400000).toISOString();
-      const { data } = await supabase.from("myid_avaliacoes")
-        .select("paciente_id").eq("terapeuta_id", userId).lt("updated_at", limite);
-      return [...new Set((data || []).map((d: any) => d.paciente_id))].filter(Boolean) as string[];
+      const ids = ((await listarBase()) || []).map((p: any) => p.id);
+      // Da mais nova para a mais velha: se o teto de linhas cortar a lista, só o que é antigo fica de fora.
+      const avaliacoes = await selectTudoPaginado((from, to) =>
+        supabase.from("myid_avaliacoes").select("paciente_id, updated_at")
+          .eq("terapeuta_id", userId).order("updated_at", { ascending: false }).range(from, to),
+      );
+      return idsComMyidVencido(avaliacoes, ids, Date.now());
     }
     if (seg === "myid_critico" || seg === "myid_moderado" || seg === "myid_saudavel") {
       const todos = await listarBase();
@@ -288,24 +333,36 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   };
 
   const dispararBroadcast = async () => {
+    if (conferindo) return;
     if (!broadcast.titulo) return toast.error("Preencha o título");
     const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
-    if (!usaAB && !broadcast.intencao) return toast.error("Preencha a mensagem base");
+    if (!usaAB && !broadcast.intencao.trim()) return toast.error("Preencha a mensagem");
     if (usaAB && broadcast.variantes.some(v => !v.texto.trim())) {
       return toast.error("Preencha o texto de todas as variantes A/B");
     }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ids = await resolverSegmento(user.id, broadcast.segmento);
-    if (ids.length === 0) return toast.error("Nenhum paciente encontrado nesse segmento");
+    // Sem data o botão dizia "Agendar" e a confirmação mandava na hora: WhatsApp real fora do que foi pedido.
+    if (broadcast.agendar && !broadcast.agendado_para) return toast.error("Escolha a data e a hora do agendamento");
+    const segmento = broadcast.segmento;
+    devolverFocoAoBotao.current = true;
+    setConferindo(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const ids = await resolverSegmento(user.id, segmento);
+      if (ids.length === 0) return toast.error("Nenhum paciente encontrado nesse segmento");
 
-    const agendado = broadcast.agendar && broadcast.agendado_para;
-    const agendadoDate = agendado ? new Date(broadcast.agendado_para) : null;
-    if (agendado && (!agendadoDate || agendadoDate.getTime() <= Date.now())) {
-      return toast.error("Data de agendamento deve ser no futuro");
+      const agendadoDate = broadcast.agendar ? new Date(broadcast.agendado_para) : null;
+      if (agendadoDate && (Number.isNaN(agendadoDate.getTime()) || agendadoDate.getTime() <= Date.now())) {
+        return toast.error("Data de agendamento deve ser no futuro");
+      }
+      // Não envia direto: abre a confirmação mostrando para QUANTOS vai. O segmento vai junto com a lista que o resolveu.
+      setConfirmDisparo({ ids, agendadoDate, segmento });
+    } catch (e) {
+      console.error("[WhatsappAutomacoes] erro ao conferir os clientes:", e);
+      toast.error("Não consegui conferir os clientes. Tente de novo.");
+    } finally {
+      setConferindo(false);
     }
-    // Não envia direto: abre a confirmação mostrando para QUANTOS vai.
-    setConfirmDisparo({ ids, agendadoDate });
   };
 
   // Executa o disparo/agendamento após a confirmação. Trava duplo clique.
@@ -316,13 +373,13 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
-      const { ids, agendadoDate } = confirmDisparo;
+      const { ids, agendadoDate, segmento } = confirmDisparo;
       const agendado = !!agendadoDate;
       const { data: b, error } = await supabase.from("agente_broadcasts").insert({
         terapeuta_id: user.id,
         titulo: broadcast.titulo,
         intencao: usaAB ? broadcast.variantes[0].texto : broadcast.intencao,
-        filtro: { segmento: broadcast.segmento },
+        filtro: { segmento, personalizar_ia: broadcast.personalizarIA },
         paciente_ids: ids,
         status: "agendado",
         total: ids.length,
@@ -338,12 +395,12 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         if (err2) { toast.error("Erro ao disparar: " + err2.message); return; }
         toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
       }
+      devolverFocoAoBotao.current = true;
       setConfirmDisparo(null);
-      setBroadcast({
-        titulo: "", intencao: "", segmento: "todos",
-        agendar: false, agendado_para: "",
-        abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
-      });
+      setBroadcast(broadcastInicial());
+    } catch (e) {
+      console.error("[WhatsappAutomacoes] erro ao enviar a campanha:", e);
+      toast.error("Algo deu errado no envio. Antes de tentar de novo, confira se as mensagens saíram, para não mandar duas vezes.");
     } finally {
       setEnviando(false);
     }
@@ -368,6 +425,12 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
     g[k] = !gatilhoLigado(k);
     setCfg({ ...cfg, gatilhos_ativos: g });
   };
+  // Texto(s) que vão ao cliente: a variante A/B só vale com 2 ou mais, como no envio.
+  const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
+  const textosDaCampanha = usaAB ? broadcast.variantes.map((v) => v.texto) : [broadcast.intencao];
+  // Vazio não entra aqui (o botão já avisa "Preencha..."); variável fora de {nome} e texto longo travam o envio.
+  const campanhaComAviso = textosDaCampanha.some((t) => avisosDaMensagem(t).length > 0);
+  const campanhaIncompleta = textosDaCampanha.some((t) => t.trim() === "");
   const removerPalavra = (p: string) => {
     setCfg({ ...cfg, palavras_escalonamento: (cfg.palavras_escalonamento || []).filter((x: string) => x !== p) });
   };
@@ -537,13 +600,18 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               <Zap className="icon-md text-primary shrink-0" />
               <div className="flex-1">
                 <h3 className="font-semibold">Mensagens proativas</h3>
-                <p className="text-caption">A IA dispara sozinha nestes momentos. Verifica a cada 15 min.</p>
+                <p className="text-caption">Estas mensagens saem sozinhas nestes momentos.</p>
+                <p className="text-caption !text-foreground/70 mt-1 break-words">
+                  Aniversário, diário parado, MyID vencido e reengajamento saem de manhã (faixa das 9h). Cada um tem um texto
+                  pronto e fixo, escolhido pelo tom de voz da aba Bot (Amigável, Formal ou Objetivo). Esses textos só passam a valer
+                  quando a equipe do My Health ID ligar o recurso para a sua conta; até lá, o aplicativo ainda escreve a mensagem com IA.
+                </p>
               </div>
             </div>
             <div className="space-y-2 pt-2">
               {GATILHOS.map(g => (
                 <div key={g.k} className="flex items-start gap-3 p-3 rounded-lg border border-border/40">
-                  <Switch checked={gatilhoLigado(g.k)} onCheckedChange={() => toggleGatilho(g.k)} />
+                  <Switch checked={gatilhoLigado(g.k)} aria-label={g.label} onCheckedChange={() => toggleGatilho(g.k)} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{g.label}</p>
                     <p className="text-micro text-muted-foreground">{g.desc}</p>
@@ -675,25 +743,25 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
             <div className="flex items-center gap-3">
               <Megaphone className="icon-md text-primary shrink-0" />
               <div className="flex-1">
-                <h3 className="font-semibold">Disparo em massa com IA</h3>
-                <p className="text-caption">A IA personaliza a mensagem por paciente usando MyID, sessões e exercícios. 1 envio a cada 5s.</p>
+                <h3 className="font-semibold">Disparo em massa</h3>
+                <p className="text-caption">Envia a mesma mensagem a vários clientes, 1 envio a cada 5s. O primeiro nome de cada um entra no lugar de {"{nome}"}.</p>
               </div>
             </div>
             <div>
-              <Label>Título interno</Label>
-              <Input placeholder="Ex.: Campanha verão" value={broadcast.titulo}
+              <Label htmlFor="broadcast-titulo">Título interno</Label>
+              <Input id="broadcast-titulo" className="min-h-11" placeholder="Ex.: Campanha verão" value={broadcast.titulo}
                 onChange={(e) => setBroadcast({ ...broadcast, titulo: e.target.value })} />
             </div>
 
             <div>
-              <Label>Segmento</Label>
-              <Select value={broadcast.segmento} onValueChange={(v) => setBroadcast({ ...broadcast, segmento: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label htmlFor="broadcast-segmento">Segmento</Label>
+              <Select value={broadcast.segmento} disabled={conferindo || enviando} onValueChange={(v) => setBroadcast({ ...broadcast, segmento: v })}>
+                <SelectTrigger id="broadcast-segmento" className="min-h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os pacientes ativos</SelectItem>
                   <SelectItem value="sem_sessao_30d">Sem sessão há 30+ dias</SelectItem>
                   <SelectItem value="exercicio_pendente">Com exercícios pendentes</SelectItem>
-                  <SelectItem value="myid_vencido">MyID vencido (30+ dias)</SelectItem>
+                  <SelectItem value="myid_vencido">MyID vencido (último há 30+ dias)</SelectItem>
                   <SelectItem value="myid_critico">MyID crítico (score &lt; 50)</SelectItem>
                   <SelectItem value="myid_moderado">MyID moderado (50–74)</SelectItem>
                   <SelectItem value="myid_saudavel">MyID saudável (≥ 75)</SelectItem>
@@ -703,38 +771,48 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               </Select>
             </div>
 
-            <div className="rounded-xl border border-border/40 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm">Teste A/B</Label>
-                  <p className="text-micro">Compara 2 abordagens — IA personaliza cada variante.</p>
-                </div>
-                <Switch checked={broadcast.abAtivo}
-                  onCheckedChange={(v) => setBroadcast({ ...broadcast, abAtivo: v })} />
+            <label className="flex items-start gap-3 min-h-11 cursor-pointer rounded-xl border border-border/40 p-4">
+              <Switch className="mt-0.5" checked={broadcast.personalizarIA} aria-label="Personalizar com IA"
+                onCheckedChange={(v) => setBroadcast({ ...broadcast, personalizarIA: v })} />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium">Personalizar com IA</span>
+                <p className="text-caption !text-foreground/70 break-words">
+                  Desligado: cada cliente recebe exatamente o texto que você escreveu, com o primeiro nome no lugar de {"{nome}"}.
+                  Ligado: a IA reescreve a mensagem para cada cliente vendo só o primeiro nome e o tom da clínica, sem MyID nem dado
+                  de saúde. O texto enviado pode ser diferente da prévia.
+                </p>
               </div>
+            </label>
+
+            <div className="rounded-xl border border-border/40 p-4 space-y-3">
+              <label className="flex items-center justify-between gap-3 min-h-11 cursor-pointer">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium">Teste A/B</span>
+                  <p className="text-caption !text-foreground/70">Compara 2 mensagens: cada cliente recebe uma, sorteada pelo peso.</p>
+                </div>
+                <Switch checked={broadcast.abAtivo} aria-label="Teste A/B"
+                  onCheckedChange={(v) => setBroadcast({ ...broadcast, abAtivo: v })} />
+              </label>
               {!broadcast.abAtivo ? (
                 <div className="grid md:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Intenção / mensagem base</Label>
-                    <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale a pena retomar os exercícios."
-                      value={broadcast.intencao}
-                      onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
-                    <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
+                  <div className="min-w-0 space-y-1.5">
+                    <Label htmlFor="broadcast-mensagem">Mensagem</Label>
+                    <CampoMensagemBroadcast id="broadcast-mensagem" texto={broadcast.intencao}
+                      placeholder={EXEMPLO_MENSAGEM}
+                      onChange={(v) => setBroadcast({ ...broadcast, intencao: v })} />
+                    <p className="text-caption !text-foreground/70 break-words">É o texto que o cliente recebe. Use {"{nome}"} para o primeiro nome dele; outras variáveis não funcionam.</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="text-micro text-muted-foreground font-medium">Prévia aproximada · a IA personaliza por paciente</p>
-                    <WaBubblePreview text={broadcast.intencao} emptyHint="Escreva a intenção para ver um exemplo." />
-                  </div>
+                  <PreviasDaMensagem texto={broadcast.intencao} quantos={3} dicaVazia="Escreva a mensagem para ver o exemplo." />
                 </div>
               ) : (
                 <div className="space-y-3">
                   {broadcast.variantes.map((v, i) => (
-                    <div key={v.key} className="space-y-2 rounded-lg border border-border/40 p-3">
+                    <div key={v.key} className="space-y-2 rounded-lg border border-border/40 p-3 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-sm">Variante {v.key}</Label>
+                        <Label htmlFor={`broadcast-variante-${v.key}`} className="text-sm">Variante {v.key}</Label>
                         <div className="flex items-center gap-2">
-                          <Label className="text-micro">Peso %</Label>
-                          <Input type="number" inputMode="numeric" min={0} max={100} className="w-20 h-8"
+                          <Label htmlFor={`broadcast-peso-${v.key}`} className="text-micro">Peso %</Label>
+                          <Input id={`broadcast-peso-${v.key}`} type="number" inputMode="numeric" min={0} max={100} className="w-20 min-h-11"
                             value={v.peso ?? ''}
                             onChange={(e) => {
                               const nv = [...broadcast.variantes];
@@ -744,55 +822,81 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                         </div>
                       </div>
                       <div className="grid md:grid-cols-2 gap-3">
-                        <Textarea rows={3} placeholder={`Texto base da variante ${v.key}`}
-                          value={v.texto}
-                          onChange={(e) => {
+                        <CampoMensagemBroadcast id={`broadcast-variante-${v.key}`} rows={3} texto={v.texto}
+                          placeholder={`Mensagem da variante ${v.key}`}
+                          onChange={(texto) => {
                             const nv = [...broadcast.variantes];
-                            nv[i] = { ...v, texto: e.target.value };
+                            nv[i] = { ...v, texto };
                             setBroadcast({ ...broadcast, variantes: nv });
                           }} />
-                        <WaBubblePreview text={v.texto} compact emptyHint={`Escreva a variante ${v.key}.`} />
+                        <PreviasDaMensagem texto={v.texto} quantos={2} dicaVazia={`Escreva a variante ${v.key}.`} />
                       </div>
                     </div>
                   ))}
-                  <p className="text-micro">Resultado por variante fica visível no histórico após o envio. A IA personaliza cada mensagem por paciente.</p>
+                  <p className="text-caption !text-foreground/70 break-words">Cada cliente recebe uma só variante, sorteada pelos pesos. Use {"{nome}"} para o primeiro nome; outras variáveis não funcionam.</p>
                 </div>
               )}
             </div>
 
             <div className="rounded-xl border border-border/40 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm">Agendar envio</Label>
-                  <p className="text-micro">Dispara automaticamente na data escolhida.</p>
+              <label className="flex items-center justify-between gap-3 min-h-11 cursor-pointer">
+                <div className="min-w-0">
+                  <span className="text-sm font-medium">Agendar envio</span>
+                  <p className="text-caption !text-foreground/70">Dispara automaticamente na data escolhida, com até 1 hora de atraso.</p>
                 </div>
-                <Switch checked={broadcast.agendar}
+                <Switch checked={broadcast.agendar} disabled={conferindo || enviando} aria-label="Agendar envio"
                   onCheckedChange={(v) => setBroadcast({ ...broadcast, agendar: v })} />
-              </div>
+              </label>
               {broadcast.agendar && (
-                <Input type="datetime-local" value={broadcast.agendado_para}
+                <Input type="datetime-local" className="min-h-11" aria-label="Data e hora do envio" disabled={conferindo || enviando} value={broadcast.agendado_para}
                   onChange={(e) => setBroadcast({ ...broadcast, agendado_para: e.target.value })} />
               )}
             </div>
 
             {confirmDisparo ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
-                <p className="text-sm font-medium">
+              <div ref={painelConfirmacao} tabIndex={-1} role="alertdialog" aria-labelledby="broadcast-confirmacao-pergunta"
+                aria-describedby="broadcast-confirmacao-aviso"
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape" || enviando) return;
+                  devolverFocoAoBotao.current = true;
+                  setConfirmDisparo(null);
+                }}
+                className="rounded-lg border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-3 min-w-0 scroll-mt-4 outline-none">
+                <p id="broadcast-confirmacao-pergunta" className="text-sm font-medium break-words">
                   {confirmDisparo.agendadoDate
                     ? `Agendar esta campanha para ${confirmDisparo.ids.length} paciente(s)?`
                     : `Enviar agora para ${confirmDisparo.ids.length} paciente(s)? (1 envio a cada 5s)`}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Isso envia mensagem real no WhatsApp. Não dá para desfazer.</p>
-                <div className="flex gap-2">
-                  <Button onClick={confirmarDisparo} disabled={enviando} className="gap-1.5">
+                <div className="space-y-2">
+                  <p className="text-xs text-foreground/75">Exemplo da mensagem para {NOME_DE_CONFIRMACAO}:</p>
+                  {textosDaCampanha.map((texto, i) => (
+                    <div key={broadcast.variantes[i]?.key ?? "unica"} data-testid="frase-confirmacao"
+                      className="rounded-md border border-amber-300/70 dark:border-amber-800/60 bg-background/70 p-2 min-w-0">
+                      {usaAB && <p className="text-xs font-medium">Variante {broadcast.variantes[i].key}</p>}
+                      <p className="text-sm whitespace-pre-wrap break-words">{fraseDeConfirmacao(texto)}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-foreground/75 break-words">
+                  {broadcast.personalizarIA
+                    ? "Com IA: cada mensagem é reescrita para o cliente, então o texto enviado pode ser diferente deste exemplo."
+                    : "Sem IA: cada cliente recebe exatamente este texto, com o primeiro nome dele."}
+                </p>
+                {confirmDisparo.agendadoDate && (
+                  <p className="text-xs text-foreground/75 break-words">A campanha agendada pode sair até 1 hora depois do horário escolhido.</p>
+                )}
+                <p id="broadcast-confirmacao-aviso" className="text-xs text-foreground/75 break-words">Isso envia mensagem real no WhatsApp. Não dá para desfazer.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button onClick={confirmarDisparo} disabled={enviando || campanhaComAviso || campanhaIncompleta} className="gap-1.5 min-h-11 w-full sm:w-auto">
                     {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     {confirmDisparo.agendadoDate ? "Confirmar agendamento" : "Confirmar envio"}
                   </Button>
-                  <Button variant="ghost" onClick={() => setConfirmDisparo(null)} disabled={enviando}>Cancelar</Button>
+                  <Button variant="ghost" className="min-h-11 w-full sm:w-auto" onClick={() => { devolverFocoAoBotao.current = true; setConfirmDisparo(null); }} disabled={enviando}>Cancelar</Button>
                 </div>
               </div>
             ) : (
-              <Button onClick={dispararBroadcast}>
+              <Button ref={botaoDisparo} className="min-h-11 w-full sm:w-auto gap-1.5" onClick={dispararBroadcast} disabled={campanhaComAviso || conferindo}>
+                {conferindo ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {broadcast.agendar ? "Agendar campanha" : "Disparar agora"}
               </Button>
             )}

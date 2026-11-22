@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Download, Loader2, CheckCircle2, AlertCircle, FileArchive, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/ui/page-header';
+import { linhasParaExportar } from '@/lib/exportarLinhas';
 
 // Tables to export. Supabase RLS already scopes rows to the logged-in user (terapeuta_id),
 // so a plain SELECT * returns only what the user owns.
@@ -106,7 +107,7 @@ export default function ExportarDados() {
       const table = TABLES[i];
       setCurrent(table);
       try {
-        const rows = await fetchAll(table);
+        const rows = linhasParaExportar(table, await fetchAll(table));
         if (rows.length > 0) {
           folder.file(`${table}.csv`, toCsv(rows));
         }
