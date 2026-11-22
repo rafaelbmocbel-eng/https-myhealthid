@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt, fmtDataHoraBR, type ContextoClinico } from "../_shared/agente-contexto.ts";
 import { enviarWhatsapp } from "../_shared/enviar-whatsapp.ts";
+import { logUsoIA } from "../_shared/log-ia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -347,6 +348,7 @@ async function executarTool(admin: AdminClient, name: string, args: ToolArgs, ct
 
 interface GeminiChatResponse {
   choices?: { message: ChatMessage }[];
+  usage?: unknown;
 }
 
 async function chamarLLM(messages: ChatMessage[], systemPrompt: string, allowTools = true): Promise<ChatMessage | undefined> {
@@ -366,6 +368,13 @@ async function chamarLLM(messages: ChatMessage[], systemPrompt: string, allowToo
     throw new Error(`Gemini API ${r.status}: ${t.slice(0, 200)}`);
   }
   const j: GeminiChatResponse = await r.json();
+  // Medição fora do caminho da resposta: o cliente não espera o insert, e uma falha aqui não pode derrubar o bot.
+  try {
+    // @ts-expect-error -- EdgeRuntime disponível em Supabase Edge Functions
+    EdgeRuntime.waitUntil(logUsoIA("whatsapp-bot-reply", "gemini-3.1-flash-lite", j.usage));
+  } catch (e) {
+    console.warn("[whatsapp-bot-reply] não registrou o uso de IA:", e);
+  }
   return j.choices?.[0]?.message;
 }
 
